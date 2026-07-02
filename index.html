@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRPTC · TN Medical Coy NCC</title>
+<!-- CDN libraries for Excel / CSV / Word import (graceful fallback if blocked) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --navy:#0B1B3A; --navyDeep:#050d20; --panel:#122a52; --panel2:#0e2245;
+    --gold:#E8B53A; --goldSoft:#F7CE5C; --red:#D24A3A; --sky:#3B95CF; --green:#2FB36A;
+    --purple:#9B7CE6; --cream:#F6F4ED; --line:#26406f; --sub:#9fb0d0;
+    --shadow:0 6px 22px rgba(0,0,0,.35); --glow:0 0 24px rgba(232,181,58,.25);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{color:var(--cream);min-height:100vh;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(1100px 600px at 50% -120px,rgba(232,181,58,.10),transparent 60%),
+      radial-gradient(900px 500px at 100% 100%,rgba(59,149,207,.10),transparent 55%),
+      linear-gradient(180deg,#0a1c40 0%,#050d20 60%);
+    background-attachment:fixed}
+  .wrap{max-width:760px;margin:0 auto}
+  .tricolour{display:flex;height:4px}
+  .tricolour>div{flex:1}
+  header{position:sticky;top:0;z-index:30;
+    background:linear-gradient(180deg,rgba(13,30,64,.96),rgba(9,22,48,.92));
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.3)}
+  .hd-inner{padding:12px 16px 12px}
+  .logos{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .logo{border-radius:11px;background:rgba(255,255,255,.95);border:1px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;cursor:pointer;
+    position:relative;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .logo img{width:100%;height:100%;object-fit:contain}
+  .logo input{display:none}
+  h1.title{font-size:15.5px;font-weight:800;text-align:center;margin:8px 0 0;line-height:1.2;
+    letter-spacing:.01em}
+  .subttl{font-size:12px;color:var(--sub);text-align:center;margin-top:2px;letter-spacing:.03em}
+  .subttl b{color:var(--goldSoft)}
+  .modebtn{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 13px;
+    font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--gold);
+    background:rgba(232,181,58,.16);color:var(--gold);margin:8px auto 0;transition:.15s}
+  .modebtn:active{transform:scale(.95)}
+  .modebtn.cadet{border-color:var(--sky);background:rgba(59,149,207,.16);color:#8fcdf0}
+  .modewrap{display:flex;justify-content:center}
+  .crumb{display:flex;align-items:center;gap:8px;padding:8px 14px}
+  .crumb button{display:inline-flex;align-items:center;gap:4px;background:none;border:none;
+    color:var(--gold);font-weight:600;font-size:14px;cursor:pointer;padding:4px 6px}
+  .crumb .now{font-weight:700;font-size:14px}
+  main{padding:20px 16px 60px}
+  .motto{text-align:center;margin-bottom:20px}
+  .motto .lbl{font-size:11px;color:var(--sub);letter-spacing:.22em;text-transform:uppercase}
+  .motto .big{font-size:25px;font-weight:900;color:var(--gold);letter-spacing:.05em;text-transform:uppercase;
+    text-shadow:var(--glow);margin-top:2px}
+  .card{border-radius:14px;padding:16px;margin-bottom:12px;
+    background:linear-gradient(180deg,rgba(24,46,86,.92),rgba(15,32,64,.92));
+    border:1px solid var(--line);box-shadow:var(--shadow)}
+  .import-card{background:linear-gradient(180deg,rgba(16,40,74,.95),rgba(11,28,56,.95));border-color:rgba(59,149,207,.45)}
+  .sec-head{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--goldSoft);margin:22px 2px 10px;display:flex;align-items:center;gap:8px}
+  .sec-head::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+  .tile{position:relative;border-radius:14px;padding:15px;text-align:left;cursor:pointer;color:var(--cream);
+    background:linear-gradient(180deg,rgba(24,46,86,.9),rgba(14,30,60,.9));
+    border:1px solid var(--line);box-shadow:var(--shadow);transition:transform .12s,border-color .12s}
+  .tile:hover{border-color:rgba(232,181,58,.5)}
+  .tile:active{transform:scale(.96)}
+  .tile .ic{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    margin-bottom:11px;font-size:21px}
+  .tile .nm{font-weight:700;font-size:13.5px;line-height:1.3}
+  .badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;padding:2px 7px;
+    border-radius:999px;min-width:20px;text-align:center;color:var(--navyDeep);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+  .row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .muted{color:var(--sub);font-size:14px}
+  .gold-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;
+    border-radius:9px;padding:10px 16px;font-size:14px;font-weight:700;color:var(--navyDeep);cursor:pointer;
+    background:linear-gradient(180deg,var(--goldSoft),var(--gold));box-shadow:0 3px 10px rgba(232,181,58,.3)}
+  .gold-btn:active{transform:translateY(1px)}
+  .gold-btn[disabled]{background:#5a4a1e;opacity:.6;cursor:not-allowed;box-shadow:none}
+  .gold-btn.full{width:100%}
+  .ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.02);
+    border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:14px;font-weight:600;
+    color:var(--cream);cursor:pointer}
+  .ghost.danger{color:#F3ABA1;border-color:rgba(210,74,58,.55)}
+  .file-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--sky);border-radius:9px;
+    padding:10px 16px;font-size:14px;font-weight:700;color:#8fcdf0;cursor:pointer;background:rgba(59,149,207,.08)}
+  .file-btn input{display:none}
+  .pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 8px;
+    border-radius:999px;letter-spacing:.03em}
+  label.fld{display:block;margin-bottom:12px}
+  label.fld>span{display:block;font-size:11px;font-weight:600;margin-bottom:4px;color:var(--goldSoft);letter-spacing:.04em}
+  input,select,textarea{width:100%;background:var(--navyDeep);border:1px solid var(--line);
+    border-radius:9px;padding:9px 11px;color:var(--cream);font-size:14px;outline:none;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+  textarea{resize:vertical;min-height:60px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .empty{text-align:center;padding:48px 16px}
+  .empty .eic{width:58px;height:58px;border-radius:999px;background:rgba(232,181,58,.12);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:27px}
+  .empty .et{font-weight:700;margin-bottom:4px}
+  .empty .eh{font-size:14px;color:var(--sub)}
+  .modal-bg{position:fixed;inset:0;z-index:50;background:rgba(3,8,20,.74);backdrop-filter:blur(3px);
+    display:flex;align-items:flex-end;justify-content:center;padding:0}
+  @media(min-width:560px){.modal-bg{align-items:center;padding:16px}}
+  .modal{width:100%;max-width:460px;background:linear-gradient(180deg,#10254c,#0a1a38);
+    border:1px solid var(--line);border-radius:18px 18px 0 0;overflow:hidden;max-height:92vh;overflow-y:auto;
+    box-shadow:0 -10px 40px rgba(0,0,0,.5)}
+  @media(min-width:560px){.modal{border-radius:18px}}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .modal-h h3{margin:0;font-size:16px;font-weight:700}
+  .modal-h button{background:none;border:none;color:var(--sub);cursor:pointer;font-size:20px;padding:4px}
+  .modal-b{padding:16px}
+  .list>*{margin-bottom:8px}
+  .ico-circle{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;overflow:hidden;font-weight:800;background:var(--navyDeep);border:1px solid var(--line);color:var(--gold)}
+  .ico-circle img{width:100%;height:100%;object-fit:cover}
+  .flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
+  .gap2{gap:8px}.gap3{gap:12px}.flex1{flex:1;min-width:0}.wrap-w{flex-wrap:wrap}
+  .truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .iconbtn{background:none;border:none;cursor:pointer;padding:6px;color:var(--sub);font-size:15px}
+  .iconbtn.del{color:#F3ABA1}
+  .small{font-size:12px;color:var(--sub)}
+  .x-small{font-size:11px;color:#7e8fb3}
+  .avatar{width:84px;height:84px;border-radius:999px;overflow:hidden;background:var(--navyDeep);
+    border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;
+    position:relative;box-shadow:var(--glow)}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .avatar input{display:none}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .photo-grid .ph{position:relative;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+  .photo-grid img{width:100%;height:70px;object-fit:cover;display:block}
+  .photo-grid .rm{position:absolute;top:4px;right:4px;background:rgba(6,17,42,.85);color:#F3ABA1;
+    border:none;border-radius:999px;width:20px;height:20px;cursor:pointer;font-size:11px}
+  .gallery-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media(min-width:560px){.gallery-grid{grid-template-columns:repeat(3,1fr)}}
+  .seg{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .seg button{padding:6px 14px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;
+    background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--cream)}
+  .seg button.on{background:linear-gradient(180deg,var(--goldSoft),var(--gold));border-color:var(--gold);color:var(--navyDeep)}
+  .stat{border-radius:11px;padding:12px;text-align:center;background:var(--navyDeep);border:1px solid var(--line)}
+  .stat .n{font-size:24px;font-weight:800}
+  .stat .l{font-size:11px;color:var(--sub);margin-top:2px}
+  .qopt{width:100%;text-align:left;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;
+    cursor:pointer;background:var(--panel);border:1px solid var(--line);color:var(--cream);
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .progress{height:6px;border-radius:999px;background:var(--panel);margin-bottom:20px}
+  .progress>div{height:100%;background:linear-gradient(90deg,var(--gold),var(--goldSoft));border-radius:999px;transition:width .3s}
+  .print-doc{background:#fff;color:#111;border-radius:8px;padding:14px}
+  .print-doc table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .print-doc td,.print-doc th{padding:5px 4px}
+  @media print{header,.crumb,.modebtn,.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ============================ STATE ============================ */
+var C = {navy:"#0B1B3A",navyDeep:"#050d20",panel:"#122a52",gold:"#E8B53A",goldSoft:"#F7CE5C",
+  red:"#D24A3A",sky:"#3B95CF",green:"#2FB36A",purple:"#9B7CE6",cream:"#F6F4ED",line:"#26406f",sub:"#9fb0d0"};
+
+/* localStorage with graceful in-memory fallback */
+var mem = {};
+var store = {
+  get:function(k,f){ try{var v=localStorage.getItem(k);return v==null?f:JSON.parse(v);}catch(e){return k in mem?mem[k]:f;} },
+  set:function(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){mem[k]=v;} }
+};
+function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function fmtDate(d){try{return new Date(d+"T00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});}catch(e){return d;}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+function fileToDataURL(file,maxDim,quality){
+  maxDim=maxDim||900;quality=quality||.72;
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(){var img=new Image();
+      img.onload=function(){var w=img.width,h=img.height;
+        if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+        else if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+        var cv=document.createElement("canvas");cv.width=w;cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);res(cv.toDataURL("image/jpeg",quality));};
+      img.onerror=rej;img.src=r.result;};
+    r.onerror=rej;r.readAsDataURL(file);});
+}
+function readArrayBuffer(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=rej;r.readAsArrayBuffer(file);});}
+function readText(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=rej;r.readAsText(file);});}
+
+/* ---------- spreadsheet / column helpers ---------- */
+function normKey(k){return String(k||"").toLowerCase().replace(/[^a-z0-9]/g,"");}
+function pickField(row,cands){var keys=Object.keys(row||{});for(var i=0;i<cands.length;i++){var c=cands[i];for(var j=0;j<keys.length;j++){if(normKey(keys[j])===c)return row[keys[j]];}}return "";}
+function excelSerialToISO(n){var d=new Date(Math.round((n-25569)*86400*1000));return d.toISOString().slice(0,10);}
+function basicCSV(text){
+  var lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(function(l){return l.trim()!=="";});
+  if(!lines.length)return [];
+  function split(line){var out=[],cur="",q=false;for(var i=0;i<line.length;i++){var ch=line[i];
+    if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else{if(ch==='"')q=true;else if(ch===','){out.push(cur);cur="";}else cur+=ch;}}out.push(cur);return out;}
+  var headers=split(lines[0]).map(function(h){return h.trim();});
+  return lines.slice(1).map(function(l){var cells=split(l);var o={};headers.forEach(function(h,i){o[h]=cells[i]!=null?cells[i]:"";});return o;});
+}
+function parseSpreadsheet(file){
+  var name=(file.name||"").toLowerCase();
+  if(/\.csv$/.test(name)){
+    return readText(file).then(function(text){
+      if(typeof Papa!=="undefined"){var res=Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false,delimitersToGuess:[",","\t",";"]});return res.data||[];}
+      return basicCSV(text);
+    });
+  }
+  if(typeof XLSX==="undefined")return Promise.reject(new Error("xlsx library not available"));
+  return readArrayBuffer(file).then(function(buf){
+    var wb=XLSX.read(buf,{type:"array"});var sheet=wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet,{defval:""}).filter(function(r){return Object.values(r).some(function(v){return String(v).trim()!=="";});});
+  });
+}
+function triggerDownload(blob,filename){var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);}
+function downloadCSV(filename,rows){
+  if(!rows.length)rows=[{"No data":""}];
+  var keys=Object.keys(rows[0]);
+  var csv=keys.join(",")+"\n"+rows.map(function(r){return keys.map(function(k){var v=String(r[k]==null?"":r[k]).replace(/"/g,'""');return /[",\n]/.test(v)?'"'+v+'"':v;}).join(",");}).join("\n");
+  triggerDownload(new Blob([csv],{type:"text/csv;charset=utf-8;"}),filename);
+}
+function downloadXLSX(filename,sheetName,rows){
+  if(typeof XLSX==="undefined"){downloadCSV(filename.replace(/\.xlsx$/i,".csv"),rows);return;}
+  var ws=XLSX.utils.json_to_sheet(rows.length?rows:[{"No data":""}]);
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheetName.slice(0,31));
+  var out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  triggerDownload(new Blob([out],{type:"application/octet-stream"}),filename);
+}
+
+/* ============================ SEED ============================ */
+var DB = {
+  logos: store.get("ncc:logos",{snr:null,ncc:null,srptc:null}),
+  about: store.get("ncc:about",{
+    intro:"The National Cadet Corps unit at Sri Ramakrishna Polytechnic College was raised to instil discipline, leadership, comradeship and the spirit of selfless service among our students, and to develop them into responsible citizens and capable leaders.",
+    venue:"Sri Ramakrishna Polytechnic College, Vattamalaipalayam, Coimbatore",
+    unit:"TN Medical Coy NCC",inaugDate:"",inaugBy:"",notes:"",inaugPhotos:[]}),
+  officers: store.get("ncc:officers",[{id:"o1",photo:"",name:"Ragupathy R",rank:"",designation:"Associate NCC Officer (ANO)",dept:"Mechanical Engineering, SRPTC",phone:"",email:"",message:"Welcome to the NCC family. Train hard, stay disciplined, and serve with pride."}]),
+  cadets: store.get("ncc:cadets",[
+    {id:"c1",reg:"TN24SDA001",name:"Sample Cadet — edit or delete me",rank:"Cadet",year:"I",contact:"",photo:"",parentMobile:"",email:"",address:""},
+    {id:"c2",reg:"TN24SDA002",name:"Sample Cadet Two",rank:"Lance Corporal",year:"II",contact:"",photo:"",parentMobile:"",email:"",address:""}]),
+  attendance: store.get("ncc:attendance",{}),
+  corner: store.get("ncc:corner",[]),
+  events: store.get("ncc:events",[
+    {id:"e1",title:"Weekly Parade",cat:"Parade",date:"2026-06-27",time:"07:00",place:"SRPTC Ground",notes:"Drill + PT. Full uniform."},
+    {id:"e2",title:"Map Reading Class",cat:"Training",date:"2026-07-04",time:"09:30",place:"Room ME-2",notes:"Bring protractor & pencil."},
+    {id:"e3",title:"Annual NCC Day Function",cat:"Event",date:"2026-11-22",time:"10:00",place:"College Auditorium",notes:"Prize distribution & cultural programme."}]),
+  certs: store.get("ncc:certs",[]),
+  camps: store.get("ncc:camps",[]),
+  hostedCamps: store.get("ncc:hostedcamps",[]),
+  visitors: store.get("ncc:visitors",[]),
+  notices: store.get("ncc:notices",[{id:"n1",title:"Welcome to TN Medical Coy NCC",body:"First-year cadets, report in PT kit for the next parade and carry your enrolment form.",date:todayISO(),pinned:true}]),
+  enrol: store.get("ncc:enrol",[]),
+  gallery: store.get("ncc:gallery",[]),
+  reports: store.get("ncc:reports",[]),
+  benefits: store.get("ncc:benefits",{
+    general:["Builds character, discipline, leadership and team spirit.","Adventure training — trekking, camps, rifle shooting, and more.","National-level opportunities such as the Republic Day Camp (RDC) and youth exchange programmes.","Improves fitness, confidence and a sense of national service.","Certificates that carry real weight in higher studies and recruitment."],
+    bCert:"The 'B' Certificate is awarded to Senior Division / Senior Wing cadets, normally after the second year of training, on attending the required camp and passing the exam. It is the stepping stone to the 'C' Certificate and is viewed favourably in several recruitments and admissions.",
+    cCert:"The 'C' Certificate is the highest NCC certificate, awarded to third-year Senior Division / Wing cadets who hold the 'B' Certificate and clear the exam and camp requirements. Benefits include special entry schemes into the Armed Forces, bonus marks in many recruitments, and preference in several government jobs and admissions.",
+    note:"Exact vacancy quotas, bonus marks and eligibility change from year to year and differ by recruiting authority. Always confirm against the latest official NCC and recruitment notifications."}),
+  enrolInfo: store.get("ncc:enrolinfo",{
+    eligibility:"• Must be a bona fide first-year student of SRPTC.\n• Should be medically fit for NCC training, parades and camps.\n• Willing to attend weekly parades, training classes and annual camps.\n• No serious disciplinary record with the institution.\n• Age and other norms follow current Directorate-level NCC guidelines.",
+    procedure:"1. Fill the 1st Year Enrolment form in this app (or collect a physical form from the ANO office).\n2. Attach a recent passport-size photo and ID proof when asked.\n3. Attend the selection / medical screening as informed by the ANO.\n4. Selected cadets are issued a regimental number, uniform details and parade schedule.\n5. Report for the first parade in PT kit as briefed by the ANO.",
+    bcEligibility:"'B' Certificate — for Senior Division/Wing cadets, typically after the second year of training, attending the requisite camp and clearing the exam.\n\n'C' Certificate — the highest certificate, for third-year cadets who already hold the 'B' Certificate, after attending the required camp and clearing the exam.\n\nFor both: regular parade attendance, good discipline and camp participation are mandatory. Always confirm with the latest Group HQ / Directorate circular."}),
+  odUsers: store.get("ncc:odusers",[
+    {id:"u1",role:"ANO",name:"Ragupathy R",loginId:"ano",password:"ano123"},
+    {id:"u2",role:"NCC Officer",name:"NCC Officer",loginId:"nccofficer",password:"ncc123"},
+    {id:"u3",role:"Class Tutor",name:"Class Tutor",loginId:"tutor",password:"tutor123"},
+    {id:"u4",role:"HOD",name:"HOD - Mechanical",loginId:"hod",password:"hod123"},
+    {id:"u5",role:"Principal",name:"Principal",loginId:"principal",password:"principal123"},
+    {id:"u6",role:"Cadet",name:"Sample Cadet",loginId:"cadet1",password:"cadet123"}]),
+  odRequests: store.get("ncc:odrequests",[]),
+  odSession: store.get("ncc:odsession",null)
+};
+function persist(k){ var m={logos:"ncc:logos",about:"ncc:about",officers:"ncc:officers",cadets:"ncc:cadets",
+  attendance:"ncc:attendance",corner:"ncc:corner",events:"ncc:events",certs:"ncc:certs",camps:"ncc:camps",
+  hostedCamps:"ncc:hostedcamps",visitors:"ncc:visitors",notices:"ncc:notices",enrol:"ncc:enrol",
+  gallery:"ncc:gallery",reports:"ncc:reports",benefits:"ncc:benefits",enrolInfo:"ncc:enrolinfo",
+  odUsers:"ncc:odusers",odRequests:"ncc:odrequests",odSession:"ncc:odsession"};
+  store.set(m[k],DB[k]); }
+
+var OD_ROLES=["ANO","NCC Officer","Class Tutor","HOD","Principal"];
+var importMsgs={};
+function setImportMsg(key,msg){importMsgs[key]=msg;render();}
+
+var QUIZ=[
+  {q:"What does NCC stand for?",o:["National Cadet Corps","National Cadet Council","National Civil Corps","Naval Cadet Corps"],a:0,lvl:"A",cat:"General"},
+  {q:"The motto of the NCC is:",o:["Service Before Self","Unity and Discipline","Duty, Honour, Country","Valour and Faith"],a:1,lvl:"A",cat:"General"},
+  {q:"In which year did the NCC come into existence?",o:["1942","1948","1950","1962"],a:1,lvl:"A",cat:"General"},
+  {q:"NCC Day is observed on:",o:["First Sunday of November","Fourth Sunday of November","26 January","15 August"],a:1,lvl:"A",cat:"General"},
+  {q:"The NCC flag has how many colours?",o:["Two","Three","Four","One"],a:1,lvl:"A",cat:"General"},
+  {q:"The three colours of the NCC flag represent:",o:["Earth, Sky, Sea","Army, Navy, Air Force","Peace, Unity, Strength","Past, Present, Future"],a:1,lvl:"B",cat:"General"},
+  {q:"The NCC song is:",o:["Saare Jahan Se Achha","Hum Sab Bharatiya Hain","Vande Mataram","Jana Gana Mana"],a:1,lvl:"A",cat:"General"},
+  {q:"The NCC functions under which Ministry?",o:["Home Affairs","Defence","Education","Youth Affairs"],a:1,lvl:"B",cat:"General"},
+  {q:"The 'A' Certificate is awarded to which division?",o:["Senior Division","Junior Division/Wing","Air Wing only","Naval Wing only"],a:1,lvl:"A",cat:"General"},
+  {q:"The 'C' Certificate is awarded to which division?",o:["Junior Division","Senior Division/Wing","School cadets","Pre-cadets"],a:1,lvl:"B",cat:"General"},
+  {q:"The Directorate General of NCC is located at:",o:["Mumbai","New Delhi","Pune","Kolkata"],a:1,lvl:"A",cat:"General"},
+  {q:"The Director General of NCC holds the rank of:",o:["Colonel","Brigadier","Lieutenant General","Major General"],a:2,lvl:"B",cat:"General"},
+  {q:"The drill command 'Savdhan' means:",o:["Stand at ease","Attention","About turn","Quick march"],a:1,lvl:"A",cat:"Drill"},
+  {q:"The command 'Vishram' means:",o:["Attention","Stand at Ease","Halt","Right turn"],a:1,lvl:"A",cat:"Drill"},
+  {q:"'Dahine Mur' is the command for:",o:["Left turn","Right turn","About turn","Stand easy"],a:1,lvl:"A",cat:"Drill"},
+  {q:"'Peechhe Mur' means:",o:["Quick march","Halt","About turn","Salute"],a:2,lvl:"B",cat:"Drill"},
+  {q:"An NCC cadet salutes using which hand?",o:["Left hand","Right hand","Both hands","Either hand"],a:1,lvl:"A",cat:"Drill"},
+  {q:"The rifle used for cadets' basic firing practice is the:",o:[".22 Deluxe rifle","AK-47","7.62 LMG","9mm pistol"],a:0,lvl:"B",cat:"Weapon Training"},
+  {q:"Contour lines on a map join points of equal:",o:["Temperature","Height","Rainfall","Population"],a:1,lvl:"B",cat:"Map Reading"},
+  {q:"A Grid Reference is read in the order:",o:["Northing then Easting","Easting then Northing","Any order","Top to bottom"],a:1,lvl:"C",cat:"Map Reading"},
+  {q:"The highest wartime gallantry award of India is the:",o:["Ashoka Chakra","Param Vir Chakra","Vir Chakra","Shaurya Chakra"],a:1,lvl:"B",cat:"General"},
+  {q:"'CATC' stands for:",o:["Cadet Annual Training Class","Combined Annual Training Camp","Central Army Training Centre","Cadet Advanced Theory Course"],a:1,lvl:"B",cat:"Camp"}
+];
+
+var ICON={about:"ℹ️",longroll:"👥",attendance:"✅",corner:"⭐",parade:"📅",onduty:"🎫",certs:"🏅",
+  camps:"⛺",hostedcamps:"🏛️",visitors:"🎖️",officer:"🧑‍✈️",notify:"🔔",quiz:"📘",enrol:"📝",
+  events:"✨",gallery:"🖼️",benefits:"🎓",reports:"📄"};
+
+var officer = true;
+var route = "home";
+var modal = null;
+
+/* ============================ MENU ============================ */
+function menu(){
+  function odPending(){return DB.odRequests.filter(function(r){
+    for(var i=0;i<OD_ROLES.length;i++){if(r.approvals&&r.approvals[OD_ROLES[i]]&&r.approvals[OD_ROLES[i]].status==="Rejected")return false;}
+    return !OD_ROLES.every(function(ro){return r.approvals&&r.approvals[ro]&&r.approvals[ro].status==="Approved";});
+  }).length;}
+  return [
+    {id:"about",label:"About NCC @ SRPTC",accent:C.gold},
+    {id:"longroll",label:"Cadet Long Roll",accent:C.sky,badge:DB.cadets.length},
+    {id:"attendance",label:"Attendance",accent:C.green},
+    {id:"corner",label:"Cadets Corner",accent:C.purple,badge:DB.corner.length||null},
+    {id:"parade",label:"Parade Schedule",accent:C.red},
+    {id:"onduty",label:"Cadet On Duty",accent:C.green,badge:odPending()||null},
+    {id:"certs",label:"B & C Cert Holders",accent:C.gold,badge:DB.certs.length||null},
+    {id:"camps",label:"Camps Attended",accent:C.sky,badge:DB.camps.length||null},
+    {id:"hostedcamps",label:"Camps Hosted by SRPTC",accent:C.red,badge:DB.hostedCamps.length||null},
+    {id:"visitors",label:"VIP Visitors",accent:C.purple,badge:DB.visitors.length||null},
+    {id:"officer",label:"ANO / Officers",accent:C.green},
+    {id:"notify",label:"Notifications",accent:C.red,badge:DB.notices.length||null},
+    {id:"quiz",label:"Certificate Quiz",accent:C.purple},
+    {id:"enrol",label:"1st Year Enrolment",accent:C.gold,badge:DB.enrol.length||null},
+    {id:"events",label:"Events",accent:C.sky},
+    {id:"gallery",label:"Photo Gallery",accent:C.green,badge:DB.gallery.length||null},
+    {id:"benefits",label:"Benefits & Cert Value",accent:C.purple},
+    {id:"reports",label:"NCC Reports",accent:C.red}
+  ];
+}
+var HOME_GROUPS=[
+  {name:"Cadets & Roll",ids:["longroll","attendance","corner","onduty"]},
+  {name:"Schedule & Gallery",ids:["parade","events","gallery"]},
+  {name:"Records & Achievements",ids:["certs","camps","hostedcamps","visitors","reports"]},
+  {name:"Unit & Joining",ids:["about","officer","notify","quiz","enrol","benefits"]}
+];
+
+/* ============================ ATOMS ============================ */
+function pill(text,fg,bg){return '<span class="pill" style="color:'+fg+';background:'+(bg||"rgba(232,181,58,.14)")+'">'+esc(text)+'</span>';}
+function emptyState(ic,t,h){return '<div class="empty"><div class="eic">'+ic+'</div><div class="et">'+esc(t)+'</div><div class="eh">'+esc(h)+'</div></div>';}
+function importCard(title,sub,accept,handler,key){
+  var msg=importMsgs[key];
+  return '<div class="card import-card"><div class="flex items-center justify-between gap3 wrap-w">'+
+    '<div class="flex items-center gap2 flex1"><span style="font-size:18px">📊</span><div class="flex1"><p style="font-size:14px;font-weight:700;margin:0">'+title+'</p><p class="x-small">'+sub+'</p></div></div>'+
+    '<label class="file-btn">Choose file<input type="file" accept="'+accept+'" onchange="'+handler+'"></label></div>'+
+    (msg?'<p class="x-small" style="margin-top:8px;color:'+(/^Imported/.test(msg)?"#7fe0a8":/^Reading/.test(msg)?C.sub:"#F3ABA1")+'">'+esc(msg)+'</p>':'')+'</div>';
+}
+
+/* ============================ RENDER ============================ */
+function render(){
+  var M=menu();
+  var cur=M.find(function(m){return m.id===route;});
+  var h='';
+  h+='<header><div class="hd-inner">';
+  h+='<div class="logos">'+logoSlot("snr",58,C.gold,"🎓")+logoSlot("ncc",46,C.sky,"🚩")+logoSlot("srptc",58,C.gold,"🎓")+'</div>';
+  h+='<h1 class="title">Sri Ramakrishna Polytechnic College</h1>';
+  h+='<div class="subttl"><b>TN Medical Coy NCC</b> · Coimbatore</div>';
+  h+='<div class="modewrap"><button class="modebtn '+(officer?"":"cadet")+'" onclick="toggleMode()">'+(officer?"🛡️ Officer":"🛡️ Cadet")+'</button></div>';
+  h+='</div>';
+  h+='<div class="tricolour"><div style="background:'+C.red+'"></div><div style="background:'+C.navy+'"></div><div style="background:'+C.sky+'"></div></div>';
+  if(route!=="home") h+='<div class="crumb"><button onclick="go(\'home\')">‹ Menu</button><span style="color:'+C.line+'">›</span><span class="now">'+esc(cur?cur.label:"")+'</span></div>';
+  h+='</header><main>';
+  if(route==="home") h+=viewHome(M);
+  else if(route==="about") h+=viewAbout();
+  else if(route==="longroll") h+=viewLongRoll();
+  else if(route==="attendance") h+=viewAttendance();
+  else if(route==="corner") h+=viewCorner();
+  else if(route==="parade") h+=viewEvents(["Parade","Training"],"Upcoming parades and training classes","parade");
+  else if(route==="events") h+=viewEvents(["Event","Function","Competition"],"Functions, competitions and special days","events");
+  else if(route==="onduty") h+=viewOnDuty();
+  else if(route==="certs") h+=viewCerts();
+  else if(route==="camps") h+=viewCamps();
+  else if(route==="hostedcamps") h+=viewHosted();
+  else if(route==="visitors") h+=viewVisitors();
+  else if(route==="officer") h+=viewOfficers();
+  else if(route==="notify") h+=viewNotices();
+  else if(route==="quiz") h+=viewQuiz();
+  else if(route==="enrol") h+=viewEnrol();
+  else if(route==="gallery") h+=viewGallery();
+  else if(route==="benefits") h+=viewBenefits();
+  else if(route==="reports") h+=viewReports();
+  if(!officer&&route!=="home") h+='<p style="text-align:center" class="x-small no-print">Cadet mode — view only. Switch to Officer mode to add or edit.</p>';
+  h+='</main>';
+  if(window.__currentModalBg){window.__currentModalBg.remove();window.__currentModalBg=null;}
+  document.getElementById("app").innerHTML=h;
+  if(modal) mountModal();
+}
+function logoSlot(which,size,ring,fallback){
+  var src=DB.logos[which];
+  var inner=src?'<img src="'+src+'">':(officer?'📷':fallback);
+  var st='width:'+size+'px;height:'+size+'px;border-color:'+ring+';font-size:'+(size*.4)+'px;color:'+C.navy;
+  if(!officer) return '<div class="logo" style="'+st+';cursor:default">'+inner+'</div>';
+  return '<label class="logo" style="'+st+'"><input type="file" accept="image/*" onchange="pickLogo(\''+which+'\',this)">'+inner+'</label>';
+}
+function toggleMode(){officer=!officer;render();}
+function go(r){route=r;render();window.scrollTo(0,0);}
+function pickLogo(which,input){var f=input.files[0];if(!f)return;
+  fileToDataURL(f,256,.9).then(function(url){DB.logos[which]=url;persist("logos");render();});}
+
+/* ---------- HOME ---------- */
+function viewHome(M){
+  var h='<div class="motto"><div class="lbl">NCC Motto</div><div class="big">Unity and Discipline</div>'+
+    '<div class="tricolour" style="width:120px;margin:8px auto 0;border-radius:999px;overflow:hidden"><div style="background:'+C.red+'"></div><div style="background:'+C.navy+'"></div><div style="background:'+C.sky+'"></div></div></div>';
+  h+='<div class="card"><div class="flex items-center gap2" style="margin-bottom:6px">'+
+    '<span style="font-size:16px">🚩</span><span style="font-size:11px;font-weight:700;color:'+C.goldSoft+';letter-spacing:.06em;text-transform:uppercase">About the unit</span></div>'+
+    '<p class="muted" style="line-height:1.5;color:#c3cee4">'+esc(DB.about.intro)+'</p></div>';
+  HOME_GROUPS.forEach(function(g){
+    h+='<div class="sec-head">'+g.name+'</div><div class="grid">';
+    g.ids.forEach(function(id){var m=M.find(function(x){return x.id===id;});if(!m)return;
+      h+='<button class="tile" onclick="go(\''+m.id+'\')">'+
+        '<div class="ic" style="background:'+m.accent+'22;border:1px solid '+m.accent+'55;color:'+m.accent+'">'+ICON[m.id]+'</div>'+
+        '<div class="nm">'+esc(m.label)+'</div>'+
+        (m.badge!=null?'<span class="badge" style="background:'+m.accent+'">'+m.badge+'</span>':'')+'</button>';
+    });
+    h+='</div>';
+  });
+  return h;
+}
+
+/* ---------- ABOUT ---------- */
+function viewAbout(){
+  var a=DB.about;
+  function row(l,v){return '<div class="flex gap3" style="padding:10px 0;border-bottom:1px solid '+C.line+'">'+
+    '<span style="font-size:14px;font-weight:600;width:112px;flex-shrink:0;color:'+C.goldSoft+'">'+l+'</span>'+
+    '<span style="font-size:14px;color:'+(v?C.cream:"#6b7da0")+'">'+esc(v||"Not added yet")+'</span></div>';}
+  var h='<div class="row-head"><h2 style="font-size:18px;font-weight:800;margin:0">About NCC at SRPTC</h2>'+
+    (officer?'<button class="gold-btn" onclick="editAbout()">✏️ Edit</button>':'')+'</div>';
+  h+='<div class="card"><p class="muted" style="line-height:1.6;color:#c3cee4">'+esc(a.intro)+'</p></div>';
+  h+='<div class="card"><p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px">Inauguration &amp; Unit Details</p>'+
+    row("Unit",a.unit)+row("Venue",a.venue)+row("Inaugurated on",a.inaugDate?fmtDate(a.inaugDate):"")+
+    row("Inaugurated by",a.inaugBy)+row("Notes",a.notes)+'</div>';
+  h+='<div class="card">'+photoStrip(a.inaugPhotos||[],"about-inaug")+'</div>';
+  return h;
+}
+function editAbout(){
+  var a=DB.about;
+  modal={title:"Edit about & inauguration",html:
+    fld("Introduction",ta("ab-intro",a.intro,90))+fld("Unit name",inp("ab-unit",a.unit))+
+    fld("Venue",inp("ab-venue",a.venue))+fld("Inauguration date",inp("ab-date",a.inaugDate,"date"))+
+    fld("Inaugurated by (chief guest)",inp("ab-by",a.inaugBy))+fld("Notes",ta("ab-notes",a.notes,60))+
+    '<button class="gold-btn full" onclick="saveAbout()">✔ Save</button>'};
+  openModal();
+}
+function saveAbout(){
+  DB.about.intro=val("ab-intro");DB.about.unit=val("ab-unit");DB.about.venue=val("ab-venue");
+  DB.about.inaugDate=val("ab-date");DB.about.inaugBy=val("ab-by");DB.about.notes=val("ab-notes");
+  persist("about");closeModal();render();
+}
+function photoStrip(photos,ctx){
+  var h='<div class="flex items-center justify-between" style="margin-bottom:8px">'+
+    '<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.04em;margin:0">Photos'+(photos.length?" ("+photos.length+")":"")+'</p>'+
+    (officer?'<label style="cursor:pointer"><input type="file" accept="image/*" multiple style="display:none" onchange="addStripPhotos(\''+ctx+'\',this)"><span class="pill" style="color:'+C.navyDeep+';background:'+C.gold+';padding:5px 12px">📷 Add photos</span></label>':'')+'</div>';
+  if(!photos.length){h+='<div style="border-radius:9px;padding:24px 0;text-align:center;background:'+C.navyDeep+';border:1px dashed '+C.line+'"><div style="color:'+C.sub+';font-size:20px">📷</div><p class="x-small">No photos added yet</p></div>';}
+  else{h+='<div class="photo-grid">';photos.forEach(function(p){h+='<div class="ph"><img src="'+p.src+'">'+(officer?'<button class="rm" onclick="removeStripPhoto(\''+ctx+'\',\''+p.id+'\')">×</button>':'')+'</div>';});h+='</div>';}
+  return h;
+}
+function addStripPhotos(ctx,input){
+  var files=[].slice.call(input.files);if(!files.length)return;
+  Promise.all(files.map(function(f){return fileToDataURL(f,1000,.7).then(function(s){return{id:uid("p"),src:s};});}))
+    .then(function(items){applyStrip(ctx,function(arr){return arr.concat(items);});});
+}
+function removeStripPhoto(ctx,pid){applyStrip(ctx,function(arr){return arr.filter(function(p){return p.id!==pid;});});}
+function applyStrip(ctx,fn){
+  if(ctx==="about-inaug"){DB.about.inaugPhotos=fn(DB.about.inaugPhotos||[]);persist("about");}
+  else if(ctx.indexOf("hosted-")===0){var id=ctx.slice(7);var c=DB.hostedCamps.find(function(x){return x.id===id;});c.photos=fn(c.photos||[]);persist("hostedCamps");}
+  else if(ctx.indexOf("visitor-")===0){var id2=ctx.slice(8);var v=DB.visitors.find(function(x){return x.id===id2;});v.photos=fn(v.photos||[]);persist("visitors");}
+  render();
+}
+
+/* ---------- LONG ROLL ---------- */
+function attPct(id){var p=0,t=0;for(var d in DB.attendance){var day=DB.attendance[d];if(day[id]){t++;if(day[id]==="P")p++;}}return t?Math.round(p/t*100):null;}
+function viewLongRoll(){
+  var h='<div class="row-head"><p class="muted">'+DB.cadets.length+' cadet'+(DB.cadets.length!==1?"s":"")+' on the long roll</p>'+
+    (officer?'<button class="gold-btn" onclick="editCadet(null)">＋ Add cadet</button>':'')+'</div>';
+  if(officer){
+    h+=importCard("Import from Excel / Google Sheet","columns: Name, Reg No, Rank, Year, Contact, Parent's Mobile, Email, Address (.xlsx, .xls or .csv)",".csv,.xlsx,.xls","importCadets(this)","longroll");
+    h+='<div class="flex gap2 wrap-w" style="margin:-4px 0 14px"><button class="ghost" onclick="exportCadetsXLSX()">⬇ Export Excel</button><button class="ghost" onclick="exportCadetsCSV()">⬇ Export CSV</button></div>';
+  }
+  if(!DB.cadets.length){h+=emptyState("👥","No cadets yet",officer?"Add a cadet or import a sheet to build the long roll.":"Ask your officer to add cadets.");return h;}
+  h+='<div class="list">';
+  DB.cadets.forEach(function(c,i){var pct=attPct(c.id);
+    h+='<div class="card" style="padding:12px"><div class="flex items-center gap3">'+
+      '<span class="small" style="width:20px;text-align:center;flex-shrink:0">'+(i+1)+'</span>'+
+      '<div class="ico-circle" style="width:40px;height:40px">'+(c.photo?'<img src="'+c.photo+'">':esc((c.name||"?").charAt(0).toUpperCase()))+'</div>'+
+      '<div class="flex1"><p style="font-weight:700;margin:0" class="truncate">'+esc(c.name||"Unnamed")+'</p>'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-top:2px"><span class="small">'+esc(c.reg||"No reg. no.")+'</span>'+
+      pill(c.rank,C.goldSoft)+pill("Year "+c.year,"#8fcdf0","rgba(59,149,207,.16)")+
+      (pct!==null?pill(pct+"%",pct>=75?"#7fe0a8":"#F3ABA1",pct>=75?"rgba(47,179,106,.16)":"rgba(210,74,58,.16)"):"")+'</div></div>'+
+      (officer?'<div class="flex"><button class="iconbtn" onclick="editCadet(\''+c.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'cadets\',\''+c.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });
+  h+='</div>';return h;
+}
+function importCadets(input){
+  var f=input.files[0];if(!f)return;input.value="";setImportMsg("longroll","Reading…");
+  parseSpreadsheet(f).then(function(rows){
+    var mapped=rows.map(function(r){
+      var y=String(pickField(r,["year","yr"])||"I").trim().toUpperCase();
+      return {id:uid("c"),
+        name:String(pickField(r,["name","cadetname","fullname","studentname"])||"").trim(),
+        reg:String(pickField(r,["reg","regno","regimentalno","enrolmentno","enrollmentno","rollno"])||"").trim(),
+        rank:String(pickField(r,["rank"])||"Cadet").trim()||"Cadet",
+        year:["I","II","III"].indexOf(y)>=0?y:"I",
+        contact:String(pickField(r,["contact","phone","mobile"])||"").trim(),
+        parentMobile:String(pickField(r,["parentmobile","parentphone","fathermobile","guardianmobile","parentcontact"])||"").trim(),
+        email:String(pickField(r,["email","emailid","mailid"])||"").trim(),
+        address:String(pickField(r,["address","fulladdress","residenceaddress"])||"").trim(),photo:""};
+    }).filter(function(c){return c.name;});
+    if(!mapped.length){setImportMsg("longroll","No usable rows found — check the Name column exists.");return;}
+    DB.cadets=DB.cadets.concat(mapped);persist("cadets");
+    importMsgs.longroll="Imported "+mapped.length+" cadet"+(mapped.length!==1?"s":"")+".";render();
+  }).catch(function(){setImportMsg("longroll",(typeof XLSX==="undefined"&&!/\.csv$/i.test(f.name))?"Excel library didn't load (check internet) — try a .csv instead.":"Could not read that file. Use .csv, .xlsx or .xls.");});
+}
+function cadetRows(){return DB.cadets.map(function(c){return{Name:c.name,"Reg No":c.reg,Rank:c.rank,Year:c.year,Contact:c.contact||"","Parent's Mobile":c.parentMobile||"","Email ID":c.email||"","Full Address":c.address||""};});}
+function exportCadetsXLSX(){downloadXLSX("SRPTC_NCC_Cadet_Long_Roll.xlsx","Cadets",cadetRows());}
+function exportCadetsCSV(){downloadCSV("SRPTC_NCC_Cadet_Long_Roll.csv",cadetRows());}
+function editCadet(id){
+  var c=id?DB.cadets.find(function(x){return x.id===id;}):{reg:"",name:"",rank:"Cadet",year:"I",contact:"",photo:"",parentMobile:"",email:"",address:""};
+  var ranks=["Cadet","Lance Corporal","Corporal","Sergeant","Company Sergeant Major","Under Officer"];
+  modal={id:id,title:id?"Edit cadet":"Add cadet",html:
+    '<div style="display:flex;justify-content:center;margin-bottom:16px">'+avatar("cd-photo",c.photo)+'</div>'+
+    fld("Full name",inp("cd-name",c.name))+fld("Regimental / enrolment no.",inp("cd-reg",c.reg))+
+    '<div class="two">'+fld("Rank",sel("cd-rank",ranks,c.rank))+fld("Year",sel("cd-year",["I","II","III"],c.year))+'</div>'+
+    fld("Cadet's contact",inp("cd-contact",c.contact))+fld("Parent's mobile number",inp("cd-pm",c.parentMobile))+
+    fld("Email ID",inp("cd-email",c.email))+fld("Full address",ta("cd-addr",c.address,60))+
+    '<button class="gold-btn full" onclick="saveCadet()">✔ Save cadet</button>'};
+  openModal();
+}
+function saveCadet(){
+  var existing=modal.id?DB.cadets.find(function(x){return x.id===modal.id;}):null;
+  var o={id:modal.id||uid("c"),name:val("cd-name"),reg:val("cd-reg"),rank:val("cd-rank"),year:val("cd-year"),
+    contact:val("cd-contact"),parentMobile:val("cd-pm"),email:val("cd-email"),address:val("cd-addr"),
+    photo:window.__avatar_cdphoto||(existing?existing.photo:"")||""};
+  if(modal.id)DB.cadets=DB.cadets.map(function(x){return x.id===o.id?o:x;});else DB.cadets.push(o);
+  window.__avatar_cdphoto=null;persist("cadets");closeModal();render();
+}
+
+/* ---------- ATTENDANCE ---------- */
+var attDate=todayISO();
+function viewAttendance(){
+  var day=DB.attendance[attDate]||{};
+  var present=DB.cadets.filter(function(c){return day[c.id]==="P";}).length;
+  var marked=DB.cadets.filter(function(c){return day[c.id];}).length;
+  var h='<p class="muted" style="margin-bottom:14px">Mark present, absent or leave for each parade date.</p>';
+  h+='<div class="card"><div class="flex items-center justify-between gap3 wrap-w">'+
+    '<label class="fld" style="margin:0"><span>Parade date</span><input type="date" value="'+attDate+'" onchange="setAttDate(this.value)" style="width:auto"></label>'+
+    '<div style="text-align:right"><p style="font-size:24px;font-weight:800;margin:0;color:'+C.gold+'">'+present+'<span style="color:'+C.sub+';font-size:16px">/'+DB.cadets.length+'</span></p><p class="x-small">present · '+marked+' marked</p></div></div>'+
+    (officer&&DB.cadets.length?'<div class="flex gap2" style="margin-top:12px"><button class="ghost" onclick="markAll(\'P\')">✔ All present</button><button class="ghost danger" onclick="markAll(\'A\')">✕ All absent</button></div>':'')+'</div>';
+  if(!DB.cadets.length){h+=emptyState("✅","No cadets to mark","Add cadets in the Cadet Long Roll first.");return h;}
+  h+='<div class="list">';
+  DB.cadets.forEach(function(c){
+    function b(v,lbl,fg,bg){var on=day[c.id]===v;
+      return '<button onclick="'+(officer?"mark(\'"+c.id+"\',\'"+v+"\')":"")+'" style="padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:'+(officer?"pointer":"default")+';background:'+(on?bg:"transparent")+';color:'+(on?fg:"#7d8db0")+';border:1px solid '+(on?fg:C.line)+'">'+lbl+'</button>';}
+    h+='<div class="card" style="padding:12px"><div class="flex items-center justify-between gap3 wrap-w">'+
+      '<div class="flex1"><p style="font-weight:700;margin:0" class="truncate">'+esc(c.name)+'</p><p class="x-small">'+esc(c.reg)+' · '+esc(c.rank)+'</p></div>'+
+      '<div class="flex gap2">'+b("P","Present","#7fe0a8","rgba(47,179,106,.16)")+b("A","Absent","#F3ABA1","rgba(210,74,58,.16)")+b("L","Leave",C.goldSoft,"rgba(232,181,58,.16)")+'</div></div></div>';
+  });
+  h+='</div>';return h;
+}
+function setAttDate(v){attDate=v;render();}
+function mark(id,s){if(!DB.attendance[attDate])DB.attendance[attDate]={};DB.attendance[attDate][id]=s;persist("attendance");render();}
+function markAll(s){var d={};DB.cadets.forEach(function(c){d[c.id]=s;});DB.attendance[attDate]=d;persist("attendance");render();}
+
+/* ---------- CORNER ---------- */
+var cornerTags={Achievement:C.gold,"Cadet of the Month":C.purple,Tip:C.sky,Message:C.green};
+function viewCorner(){
+  var h='<div class="row-head"><p class="muted">Achievements, tips and shout-outs for cadets</p>'+
+    (officer?'<button class="gold-btn" onclick="editCorner(null)">＋ Post</button>':'')+'</div>';
+  if(!DB.corner.length){h+=emptyState("⭐","Corner is empty",officer?"Celebrate an achievement or share a tip.":"Check back for cadet highlights.");return h;}
+  h+='<div class="list">';
+  DB.corner.forEach(function(p){var col=cornerTags[p.tag]||C.gold;
+    h+='<div class="card"><div class="flex items-center justify-between gap3"><div class="flex1">'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-bottom:4px">'+pill(p.tag,col,col+"22")+'<span style="font-weight:700">'+esc(p.title)+'</span></div>'+
+      (p.who?'<p class="x-small" style="color:'+C.goldSoft+';margin:0 0 4px">★ '+esc(p.who)+'</p>':'')+
+      '<p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;margin:0">'+esc(p.body)+'</p>'+
+      '<p class="x-small" style="margin-top:8px">'+fmtDate(p.date)+'</p></div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="editCorner(\''+p.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'corner\',\''+p.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function editCorner(id){
+  var p=id?DB.corner.find(function(x){return x.id===id;}):{tag:"Achievement",title:"",body:"",who:""};
+  modal={id:id,title:id?"Edit post":"New corner post",html:
+    fld("Type",sel("co-tag",Object.keys(cornerTags),p.tag))+fld("Title",inp("co-title",p.title))+
+    fld("Cadet name (optional)",inp("co-who",p.who))+fld("Details",ta("co-body",p.body,80))+
+    '<button class="gold-btn full" onclick="saveCorner()">✔ Save</button>'};
+  openModal();
+}
+function saveCorner(){
+  if(modal.id){DB.corner=DB.corner.map(function(x){return x.id===modal.id?{id:x.id,date:x.date,tag:val("co-tag"),title:val("co-title"),who:val("co-who"),body:val("co-body")}:x;});}
+  else DB.corner.unshift({id:uid("k"),date:todayISO(),tag:val("co-tag"),title:val("co-title"),who:val("co-who"),body:val("co-body")});
+  persist("corner");closeModal();render();
+}
+
+/* ---------- EVENTS / PARADE ---------- */
+function viewEvents(cats,sub,key){
+  var today=todayISO();
+  var list=DB.events.filter(function(e){return cats.indexOf(e.cat)>=0;}).sort(function(a,b){return (a.date+a.time).localeCompare(b.date+b.time);});
+  var typeCol=function(t){return {Parade:C.red,Training:C.sky,Event:C.purple,Function:C.gold,Competition:C.green}[t]||C.gold;};
+  var h='<div class="row-head"><p class="muted">'+sub+'</p>'+
+    (officer?'<button class="gold-btn" onclick="editEvent(null,\''+cats.join(",")+'\')">＋ Add</button>':'')+'</div>';
+  if(officer) h+=importCard("Import schedule from Excel / Google Sheet","columns: Title, Category, Date, Time, Place, Notes (.xlsx, .xls or .csv)",".csv,.xlsx,.xls","importEvents(this,'"+cats.join(",")+"')",key);
+  if(!list.length){h+=emptyState("📅","Nothing scheduled",officer?"Add the first entry or import a sheet.":"Nothing here yet.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(e){var past=e.date<today;var dt=new Date(e.date+"T00:00");
+    var wd=dt.toLocaleDateString("en-IN",{weekday:"short"}),mo=dt.toLocaleDateString("en-IN",{month:"short"});
+    h+='<div class="card" style="opacity:'+(past?.6:1)+'"><div class="flex gap3">'+
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;flex-shrink:0;background:'+C.navyDeep+';border:1px solid '+C.line+';border-radius:9px;padding:8px 0">'+
+      '<span class="x-small" style="font-weight:700;color:'+typeCol(e.cat)+'">'+wd+'</span>'+
+      '<span style="font-size:20px;font-weight:800;line-height:1">'+e.date.slice(8,10)+'</span><span class="x-small">'+mo+'</span></div>'+
+      '<div class="flex1"><div class="flex items-center gap2 wrap-w" style="margin-bottom:4px"><span style="font-weight:700">'+esc(e.title)+'</span>'+pill(e.cat,typeCol(e.cat),typeCol(e.cat)+"22")+'</div>'+
+      '<div class="flex items-center gap3 wrap-w small">'+'<span>🕐 '+esc(e.time)+'</span>'+(e.place?'<span>📍 '+esc(e.place)+'</span>':'')+'</div>'+
+      (e.notes?'<p style="font-size:14px;color:#c3cee4;margin:6px 0 0">'+esc(e.notes)+'</p>':'')+'</div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="editEvent(\''+e.id+'\',\''+cats.join(",")+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'events\',\''+e.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function importEvents(input,catsStr){
+  var cats=catsStr.split(",");var key=cats[0]==="Parade"?"parade":"events";
+  var f=input.files[0];if(!f)return;input.value="";setImportMsg(key,"Reading…");
+  parseSpreadsheet(f).then(function(rows){
+    var mapped=rows.map(function(r){
+      var catV=String(pickField(r,["cat","category","type"])||"").trim();
+      var matched=cats.filter(function(c){return c.toLowerCase()===catV.toLowerCase();})[0]||cats[0];
+      var dateV=pickField(r,["date"]);
+      if(typeof dateV==="number")dateV=excelSerialToISO(dateV);
+      else if(dateV){var d=new Date(dateV);dateV=isNaN(d)?"":d.toISOString().slice(0,10);}
+      return {id:uid("e"),title:String(pickField(r,["title","eventtitle","name","subject"])||"").trim(),cat:matched,
+        date:dateV||todayISO(),time:String(pickField(r,["time"])||"07:00").trim(),
+        place:String(pickField(r,["place","location","venue"])||"").trim(),notes:String(pickField(r,["notes","remarks","description"])||"").trim()};
+    }).filter(function(e){return e.title;});
+    if(!mapped.length){setImportMsg(key,"No usable rows found — check the Title and Date columns.");return;}
+    DB.events=DB.events.concat(mapped);persist("events");
+    importMsgs[key]="Imported "+mapped.length+" entr"+(mapped.length!==1?"ies":"y")+".";render();
+  }).catch(function(){setImportMsg(key,(typeof XLSX==="undefined"&&!/\.csv$/i.test(f.name))?"Excel library didn't load — try a .csv instead.":"Could not read that file. Use .csv, .xlsx or .xls.");});
+}
+function editEvent(id,catsStr){
+  var cats=catsStr.split(",");
+  var e=id?DB.events.find(function(x){return x.id===id;}):{title:"",cat:cats[0],date:todayISO(),time:"07:00",place:"",notes:""};
+  modal={id:id,title:id?"Edit":"Add",html:
+    fld("Title",inp("ev-title",e.title))+
+    '<div class="two">'+fld("Type",sel("ev-cat",cats,e.cat))+fld("Time",inp("ev-time",e.time,"time"))+'</div>'+
+    fld("Date",inp("ev-date",e.date,"date"))+fld("Location",inp("ev-place",e.place))+fld("Notes (optional)",ta("ev-notes",e.notes,60))+
+    '<button class="gold-btn full" onclick="saveEvent()">✔ Save</button>'};
+  openModal();
+}
+function saveEvent(){
+  var o={id:modal.id||uid("e"),title:val("ev-title"),cat:val("ev-cat"),date:val("ev-date"),time:val("ev-time"),place:val("ev-place"),notes:val("ev-notes")};
+  if(modal.id)DB.events=DB.events.map(function(x){return x.id===o.id?o:x;});else DB.events.push(o);
+  persist("events");closeModal();render();
+}
+
+/* ---------- CADET ON DUTY ---------- */
+var odLoginForm={role:"Cadet",loginId:"",password:""};
+function odOverall(req){
+  for(var i=0;i<OD_ROLES.length;i++){var r=OD_ROLES[i];if(req.approvals[r].status==="Rejected")return{status:"Rejected",role:r,reason:req.approvals[r].reason};}
+  if(OD_ROLES.every(function(r){return req.approvals[r].status==="Approved";}))return{status:"Approved"};
+  return{status:"Pending"};
+}
+function odStatusColor(s){return s==="Approved"?{fg:"#7fe0a8",bg:"rgba(47,179,106,.16)"}:s==="Rejected"?{fg:"#F3ABA1",bg:"rgba(210,74,58,.16)"}:{fg:C.goldSoft,bg:"rgba(232,181,58,.16)"};}
+function viewOnDuty(){
+  var s=DB.odSession;var h='';var ALL=["Cadet"].concat(OD_ROLES);
+  if(officer){
+    h+='<div class="card"><div class="flex items-center justify-between" style="margin-bottom:8px"><p style="font-size:14px;font-weight:700;margin:0">Manage Login Accounts (Admin)</p>'+
+      '<button class="ghost" onclick="toggleAcct()">'+(window.__showAcct?"Hide":"Show")+'</button></div>';
+    if(window.__showAcct){
+      h+='<button class="gold-btn" onclick="editAcct(null)">＋ Add login</button><div class="list" style="margin-top:12px">';
+      DB.odUsers.forEach(function(u){
+        h+='<div class="flex items-center justify-between gap2" style="background:'+C.navyDeep+';border:1px solid '+C.line+';border-radius:9px;padding:8px">'+
+          '<div class="flex1"><p style="font-size:14px;font-weight:600;margin:0" class="truncate">'+esc(u.name)+' <span style="color:'+C.sub+'">· '+esc(u.role)+'</span></p><p class="x-small">Login ID: '+esc(u.loginId)+'</p></div>'+
+          '<div class="flex"><button class="iconbtn" onclick="editAcct(\''+u.id+'\')">✏️</button><button class="iconbtn del" onclick="delAcct(\''+u.id+'\')">🗑️</button></div></div>';
+      });
+      h+='</div><p class="x-small" style="margin-top:8px">Create one login per cadet and per faculty role. Share each ID and password directly.</p>';
+    }
+    h+='</div>';
+  }
+  if(!s){
+    h+='<div class="card"><p style="font-size:14px;font-weight:700;margin:0 0 8px">How Cadet On Duty works</p>'+
+      '<ol style="font-size:14px;color:#c3cee4;padding-left:18px;margin:0;line-height:1.7">'+
+      '<li>The cadet logs in and applies for On Duty with full trip details.</li>'+
+      '<li>ANO, NCC Officer, Class Tutor and HOD each Approve or Reject (with a reason) from their own login.</li>'+
+      '<li>Once all four approve, the Principal gives final approval.</li>'+
+      '<li>If anyone rejects, it stops there and the reason is shown to the cadet.</li>'+
+      '<li>Approved / rejected applications can be printed or saved as PDF.</li></ol></div>';
+    h+='<div class="card"><p style="font-size:14px;font-weight:700;margin:0 0 12px">Log in to Cadet On Duty</p>'+
+      (window.__odErr?'<p class="x-small" style="color:#F3ABA1">'+esc(window.__odErr)+'</p>':'')+
+      fld("I am a",sel("od-role",ALL,odLoginForm.role))+fld("Login ID",inp("od-lid",odLoginForm.loginId))+
+      fld("Password",inp("od-pw",odLoginForm.password,"password"))+
+      '<button class="gold-btn full" onclick="odLogin()">→ Log in</button>'+
+      '<p class="x-small" style="margin-top:8px">Don\'t have a login? Ask your ANO to create one.</p></div>';
+    return h;
+  }
+  h+='<div class="row-head"><div><p style="font-size:14px;font-weight:700;margin:0">'+esc(s.name)+'</p><p class="x-small" style="color:'+C.goldSoft+'">'+esc(s.role)+'</p></div>'+
+    '<button class="ghost" onclick="odLogout()">⎋ Log out</button></div>';
+  if(s.role==="Cadet"){
+    var mine=DB.odRequests.filter(function(r){return r.appliedBy===s.name;});
+    h+='<div class="card"><div class="flex items-center justify-between gap3 wrap-w">'+
+      '<p class="muted">'+mine.length+' application'+(mine.length!==1?"s":"")+' submitted</p>'+
+      '<button class="gold-btn" onclick="odApply()">＋ Apply for On Duty</button></div></div>';
+    if(!mine.length){h+=emptyState("🎫","No applications yet","Tap “Apply for On Duty” to submit your first request.");}
+    else{h+='<div class="list">';mine.forEach(function(r){var ov=odOverall(r);var sc=odStatusColor(ov.status);
+      h+='<div class="card" style="padding:12px;cursor:pointer" onclick="odView(\''+r.id+'\')"><div class="flex items-center justify-between gap3 wrap-w">'+
+        '<div class="flex1"><p style="font-weight:700;margin:0" class="truncate">'+esc(r.purpose)+'</p><p class="x-small" style="margin-top:2px">'+esc(r.place)+' · '+fmtDate(r.from)+' – '+fmtDate(r.to)+' · '+r.days+' day'+(r.days!==1?"s":"")+'</p></div>'+
+        pill(ov.status,sc.fg,sc.bg)+'</div>'+
+        (ov.status==="Rejected"?'<p class="x-small" style="color:#F3ABA1;margin-top:8px">Rejected by '+esc(ov.role)+': '+esc(ov.reason)+'</p>':'')+'</div>';
+    });h+='</div>';}
+    return h;
+  }
+  var pending=DB.odRequests.filter(function(req){var ov=odOverall(req);if(ov.status!=="Pending")return false;
+    if(s.role==="Principal")return OD_ROLES.slice(0,4).every(function(r){return req.approvals[r].status==="Approved";})&&req.approvals.Principal.status==="Pending";
+    return req.approvals[s.role].status==="Pending";});
+  h+='<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px">Pending Your Approval</p>';
+  if(!pending.length){h+=emptyState("✅","Nothing pending","No applications are waiting on your approval right now.");}
+  else{h+='<div class="list" style="margin-bottom:24px">';pending.forEach(function(r){
+    h+='<div class="card"><p style="font-weight:700;margin:0">'+esc(r.cadetName)+' <span style="color:'+C.sub+';font-weight:400">· '+esc(r.reg)+'</span></p>'+
+      '<p class="x-small" style="margin-top:2px">Year '+esc(r.year)+' · '+esc(r.dept)+'</p>'+
+      '<p style="font-size:14px;color:#c3cee4;margin:6px 0 0">'+esc(r.purpose)+' — '+esc(r.place)+'</p>'+
+      '<p class="x-small" style="margin-top:4px">'+fmtDate(r.from)+' – '+fmtDate(r.to)+' · '+r.days+' day'+(r.days!==1?"s":"")+' · '+esc(r.mode)+'</p>'+
+      '<div class="flex gap2 wrap-w" style="margin-top:12px"><button class="gold-btn" onclick="odAct(\''+r.id+'\',\'Approved\')">✔ Approve</button>'+
+      '<button class="ghost danger" onclick="odReject(\''+r.id+'\')">✕ Reject</button>'+
+      '<button class="ghost" onclick="odView(\''+r.id+'\')">View details</button></div></div>';
+  });h+='</div>';}
+  h+='<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px">All On-Duty Applications</p>';
+  if(!DB.odRequests.length){h+=emptyState("🎫","No applications yet","Cadet applications will appear here.");}
+  else{h+='<div class="list">';DB.odRequests.slice().sort(function(a,b){return b.appliedOn.localeCompare(a.appliedOn);}).forEach(function(r){
+    var ov=odOverall(r);var sc=odStatusColor(ov.status);
+    h+='<div class="card" style="padding:12px;cursor:pointer" onclick="odView(\''+r.id+'\')"><div class="flex items-center justify-between gap3 wrap-w">'+
+      '<div class="flex1"><p style="font-weight:700;margin:0" class="truncate">'+esc(r.cadetName)+'</p><p class="x-small" style="margin-top:2px">'+esc(r.purpose)+' · '+fmtDate(r.from)+' – '+fmtDate(r.to)+'</p></div>'+
+      pill(ov.status,sc.fg,sc.bg)+'</div></div>';
+  });h+='</div>';}
+  return h;
+}
+function toggleAcct(){window.__showAcct=!window.__showAcct;render();}
+function odLogin(){
+  odLoginForm={role:val("od-role"),loginId:val("od-lid"),password:val("od-pw")};
+  var u=DB.odUsers.find(function(x){return x.role===odLoginForm.role&&x.loginId.trim().toLowerCase()===odLoginForm.loginId.trim().toLowerCase()&&x.password===odLoginForm.password;});
+  if(!u){window.__odErr="Invalid login ID or password for the selected role.";render();return;}
+  window.__odErr=null;DB.odSession={userId:u.id,role:u.role,name:u.name};persist("odSession");
+  odLoginForm={role:"Cadet",loginId:"",password:""};render();
+}
+function odLogout(){DB.odSession=null;persist("odSession");render();}
+function editAcct(id){
+  var u=id?DB.odUsers.find(function(x){return x.id===id;}):{role:"Cadet",name:"",loginId:"",password:""};
+  modal={id:id,title:id?"Edit login":"Add login",html:
+    fld("Role",sel("ac-role",["Cadet"].concat(OD_ROLES),u.role))+fld("Name",inp("ac-name",u.name))+
+    fld("Login ID",inp("ac-lid",u.loginId))+fld("Password",inp("ac-pw",u.password))+
+    '<button class="gold-btn full" onclick="saveAcct()">✔ Save</button>'};
+  window.__showAcct=true;openModal();
+}
+function saveAcct(){
+  var o={id:modal.id||uid("u"),role:val("ac-role"),name:val("ac-name"),loginId:val("ac-lid"),password:val("ac-pw")};
+  if(modal.id)DB.odUsers=DB.odUsers.map(function(x){return x.id===o.id?o:x;});else DB.odUsers.push(o);
+  persist("odUsers");closeModal();render();
+}
+function delAcct(id){if(!confirm("Delete this login?"))return;DB.odUsers=DB.odUsers.filter(function(x){return x.id!==id;});persist("odUsers");render();}
+function odApply(){
+  var s=DB.odSession;
+  modal={title:"Apply for On Duty",html:
+    fld("Cadet name",inp("ap-name",s&&s.role==="Cadet"?s.name:""))+fld("Register number",inp("ap-reg",""))+
+    '<div class="two">'+fld("Year",sel("ap-year",["I","II","III"],"I"))+fld("Department",inp("ap-dept",""))+'</div>'+
+    fld("Purpose of visit",ta("ap-purpose","",60))+fld("Place to visit",inp("ap-place",""))+
+    '<div class="two">'+fld("From date",inp("ap-from",todayISO(),"date"))+fld("To date",inp("ap-to",todayISO(),"date"))+'</div>'+
+    fld("Mode of transport",sel("ap-mode",["Bus","Train","College Vehicle","Own Vehicle","Two-wheeler","Walking","Other"],"Bus"))+
+    '<div class="two">'+fld("Cadet's mobile",inp("ap-cm",""))+fld("Parent's mobile",inp("ap-pm",""))+'</div>'+
+    '<p class="x-small" style="margin-bottom:12px">Goes to the ANO, NCC Officer, Class Tutor and HOD for approval, then final approval from the Principal.</p>'+
+    '<button class="gold-btn full" onclick="submitApply()">✔ Submit application</button>'};
+  openModal();
+}
+function submitApply(){
+  var name=val("ap-name").trim(),purpose=val("ap-purpose").trim();
+  if(!name||!purpose){alert("Please fill cadet name and purpose.");return;}
+  var from=val("ap-from"),to=val("ap-to");
+  var days=Math.max(1,Math.round((new Date(to)-new Date(from))/86400000)+1);
+  var approvals={};OD_ROLES.forEach(function(r){approvals[r]={status:"Pending",by:"",date:"",reason:""};});
+  DB.odRequests.unshift({id:uid("od"),cadetName:name,reg:val("ap-reg"),year:val("ap-year"),dept:val("ap-dept"),
+    purpose:purpose,place:val("ap-place"),from:from,to:to,days:days,mode:val("ap-mode"),
+    cadetMobile:val("ap-cm"),parentMobile:val("ap-pm"),approvals:approvals,appliedOn:todayISO(),appliedBy:DB.odSession.name});
+  persist("odRequests");closeModal();render();
+}
+function odAct(id,action,reason){
+  var s=DB.odSession;
+  DB.odRequests=DB.odRequests.map(function(x){if(x.id!==id)return x;var ap=Object.assign({},x.approvals);ap[s.role]={status:action,by:s.name,date:todayISO(),reason:reason||""};return Object.assign({},x,{approvals:ap});});
+  persist("odRequests");closeModal();render();
+}
+function odReject(id){
+  modal={title:"Reject application",html:fld("Reason for rejection",ta("rj-reason","",80))+'<button class="gold-btn full" onclick="confirmReject(\''+id+'\')">✔ Confirm rejection</button>'};
+  openModal();
+}
+function confirmReject(id){var r=val("rj-reason").trim();if(!r){alert("Please mention the reason.");return;}odAct(id,"Rejected",r);}
+function odView(id){
+  var r=DB.odRequests.find(function(x){return x.id===id;});
+  var fields=[["Cadet Name",r.cadetName],["Register Number",r.reg],["Year / Department",r.year+" / "+r.dept],
+    ["Purpose of Visit",r.purpose],["Place to Visit",r.place],["From – To",fmtDate(r.from)+" – "+fmtDate(r.to)],
+    ["Total Days",r.days],["Mode of Transport",r.mode],["Cadet's Mobile",r.cadetMobile],["Parent's Mobile",r.parentMobile],["Applied On",fmtDate(r.appliedOn)]];
+  var doc='<div class="print-doc"><p style="font-weight:800;text-align:center;margin:0 0 4px;font-size:14px">Sri Ramakrishna Polytechnic College</p>'+
+    '<p style="text-align:center;margin:0 0 10px;font-size:12px;color:#444">NCC Cadet On-Duty Application</p><table><tbody>';
+  fields.forEach(function(f){doc+='<tr style="border-bottom:1px solid #ddd"><td style="font-weight:700;width:42%;vertical-align:top">'+f[0]+'</td><td>'+esc(f[1]||"—")+'</td></tr>';});
+  doc+='</tbody></table><p style="font-weight:700;margin:12px 0 4px;font-size:13px">Approval Status</p><table><thead><tr style="background:#eee"><th style="text-align:left">Role</th><th style="text-align:left">Status</th><th style="text-align:left">By / Date</th><th style="text-align:left">Reason</th></tr></thead><tbody>';
+  OD_ROLES.forEach(function(role){var a=r.approvals[role];doc+='<tr style="border-bottom:1px solid #eee"><td>'+role+'</td><td>'+a.status+'</td><td>'+(a.by?esc(a.by)+" · "+fmtDate(a.date):"—")+'</td><td>'+esc(a.reason||"—")+'</td></tr>';});
+  doc+='</tbody></table></div>';
+  modal={title:"On-Duty Application",html:doc+
+    '<div style="margin-top:12px"><button class="gold-btn full no-print" onclick="window.print()">🖨 Print / Save as PDF</button></div>'+
+    '<p class="x-small no-print" style="margin-top:8px">Tip: in the print dialog choose “Save as PDF” to download a copy.</p>'};
+  openModal();
+}
+
+/* ---------- CERTS ---------- */
+var certFilter="All";
+function viewCerts(){
+  var bCount=DB.certs.filter(function(c){return c.type==="B";}).length,cCount=DB.certs.filter(function(c){return c.type==="C";}).length;
+  var list=DB.certs.filter(function(c){return certFilter==="All"||c.type===certFilter;}).sort(function(a,b){return (b.examYear||"").localeCompare(a.examYear||"");});
+  var h='<div class="row-head"><p class="muted">'+bCount+" 'B' · "+cCount+" 'C' certificate holders</p>"+
+    (officer?'<button class="gold-btn" onclick="editCert(null)">＋ Add</button>':'')+'</div>';
+  h+='<div class="seg">'+["All","B","C"].map(function(t){return '<button class="'+(certFilter===t?"on":"")+'" onclick="setCertFilter(\''+t+'\')">'+(t==="All"?"All":"Cert "+t)+'</button>';}).join("")+'</div>';
+  if(!list.length){h+=emptyState("🏅","No certificate holders listed",officer?"Add cadets who earned their B or C certificate.":"None recorded yet.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(c){
+    h+='<div class="card" style="padding:12px"><div class="flex items-center justify-between gap3"><div class="flex items-center gap3 flex1">'+
+      '<div class="ico-circle" style="background:'+(c.type==="C"?"rgba(232,181,58,.18)":"rgba(59,149,207,.18)")+';border-color:'+(c.type==="C"?C.gold:C.sky)+';color:'+(c.type==="C"?C.gold:"#8fcdf0")+'">'+c.type+'</div>'+
+      '<div class="flex1"><p style="font-weight:700;margin:0" class="truncate">'+esc(c.name)+'</p><p class="x-small">'+esc(c.reg)+' · Grade '+esc(c.grade)+' · '+esc(c.examYear)+'</p></div></div>'+
+      (officer?'<div class="flex"><button class="iconbtn" onclick="editCert(\''+c.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'certs\',\''+c.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function setCertFilter(t){certFilter=t;render();}
+function editCert(id){
+  var c=id?DB.certs.find(function(x){return x.id===id;}):{name:"",reg:"",type:"C",grade:"A",examYear:String(new Date().getFullYear())};
+  modal={id:id,title:id?"Edit holder":"Add certificate holder",html:
+    fld("Cadet name",inp("ce-name",c.name))+fld("Regimental no.",inp("ce-reg",c.reg))+
+    '<div class="three">'+fld("Certificate",sel("ce-type",["B","C"],c.type))+fld("Grade",sel("ce-grade",["A","B","C"],c.grade))+fld("Exam year",inp("ce-year",c.examYear))+'</div>'+
+    '<button class="gold-btn full" onclick="saveCert()">✔ Save</button>'};
+  openModal();
+}
+function saveCert(){
+  var o={id:modal.id||uid("h"),name:val("ce-name"),reg:val("ce-reg"),type:val("ce-type"),grade:val("ce-grade"),examYear:val("ce-year")};
+  if(modal.id)DB.certs=DB.certs.map(function(x){return x.id===o.id?o:x;});else DB.certs.push(o);
+  persist("certs");closeModal();render();
+}
+
+/* ---------- CAMPS ATTENDED ---------- */
+function viewCamps(){
+  var list=DB.camps.slice().sort(function(a,b){return (b.from||"").localeCompare(a.from||"");});
+  var h='<div class="row-head"><p class="muted">Record of camps & special camps attended</p>'+
+    (officer?'<button class="gold-btn" onclick="editCamp(null)">＋ Add camp</button>':'')+'</div>';
+  if(!list.length){h+=emptyState("⛺","No camps recorded",officer?"Log a camp and the cadets who attended.":"No camp records yet.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(c){
+    h+='<div class="card"><div class="flex items-center justify-between gap3"><div class="flex1">'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-bottom:4px"><span style="font-weight:700">'+esc(c.name||c.type)+'</span>'+pill(c.type,C.gold)+(c.count?pill(c.count+" cadets","#8fcdf0","rgba(59,149,207,.16)"):"")+'</div>'+
+      '<div class="flex items-center gap3 wrap-w small" style="margin-bottom:4px">'+(c.place?'<span>📍 '+esc(c.place)+'</span>':'')+'<span>📅 '+fmtDate(c.from)+(c.to&&c.to!==c.from?" – "+fmtDate(c.to):"")+'</span></div>'+
+      (c.cadets?'<p style="font-size:14px;color:#c3cee4;margin:0"><span style="color:'+C.goldSoft+';font-weight:600">Cadets: </span>'+esc(c.cadets)+'</p>':'')+
+      (c.notes?'<p style="font-size:14px;color:#9fb0d0;margin:4px 0 0">'+esc(c.notes)+'</p>':'')+'</div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="editCamp(\''+c.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'camps\',\''+c.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function editCamp(id){
+  var types=["CATC","Special National Integration Camp (SNIC)","National Integration Camp (NIC)","Thal Sainik Camp (TSC)","Republic Day Camp (RDC)","Army Attachment Camp","Other"];
+  var c=id?DB.camps.find(function(x){return x.id===id;}):{name:"",type:"CATC",place:"",from:todayISO(),to:todayISO(),cadets:"",count:"",notes:""};
+  modal={id:id,title:id?"Edit camp":"Add camp",html:
+    fld("Camp name",inp("cm-name",c.name))+fld("Camp type",sel("cm-type",types,c.type))+fld("Location",inp("cm-place",c.place))+
+    '<div class="two">'+fld("From",inp("cm-from",c.from,"date"))+fld("To",inp("cm-to",c.to,"date"))+'</div>'+
+    fld("No. of cadets",inp("cm-count",c.count))+fld("Cadets attended (names)",ta("cm-cadets",c.cadets,60))+fld("Notes (optional)",inp("cm-notes",c.notes))+
+    '<button class="gold-btn full" onclick="saveCamp()">✔ Save</button>'};
+  openModal();
+}
+function saveCamp(){
+  var o={id:modal.id||uid("m"),name:val("cm-name"),type:val("cm-type"),place:val("cm-place"),from:val("cm-from"),to:val("cm-to"),count:val("cm-count"),cadets:val("cm-cadets"),notes:val("cm-notes")};
+  if(modal.id)DB.camps=DB.camps.map(function(x){return x.id===o.id?o:x;});else DB.camps.push(o);
+  persist("camps");closeModal();render();
+}
+
+/* ---------- HOSTED CAMPS ---------- */
+function viewHosted(){
+  var list=DB.hostedCamps.slice().sort(function(a,b){return (b.from||"").localeCompare(a.from||"");});
+  var h='<div class="row-head"><p class="muted">Camps conducted / hosted by the SRPTC NCC unit</p>'+
+    (officer?'<button class="gold-btn" onclick="editHosted(null)">＋ Add camp</button>':'')+'</div>';
+  if(!list.length){h+=emptyState("🏛️","No hosted camps recorded",officer?"Add a camp conducted by this unit.":"No records yet.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(c){
+    h+='<div class="card"><div class="flex items-center justify-between gap3 wrap-w" style="margin-bottom:8px"><div class="flex1">'+
+      '<p style="font-weight:700;margin:0">'+esc(c.name)+'</p>'+
+      '<div class="flex items-center gap3 wrap-w small" style="margin-top:4px">'+(c.duration?'<span>'+esc(c.duration)+'</span>':'')+'<span>📅 '+fmtDate(c.from)+(c.to&&c.to!==c.from?" – "+fmtDate(c.to):"")+'</span></div>'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-top:6px">'+(c.cadetStrength?pill(c.cadetStrength+" cadets","#8fcdf0","rgba(59,149,207,.16)"):"")+(c.officerStrength?pill(c.officerStrength+" army officers",C.gold):"")+'</div></div>'+
+      (officer?'<div class="flex"><button class="iconbtn" onclick="editHosted(\''+c.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'hostedCamps\',\''+c.id+'\')">🗑️</button></div>':'')+'</div>'+
+      (c.notes?'<p style="font-size:14px;color:#c3cee4;margin:0 0 8px">'+esc(c.notes)+'</p>':'')+photoStrip(c.photos||[],"hosted-"+c.id)+'</div>';
+  });h+='</div>';return h;
+}
+function editHosted(id){
+  var c=id?DB.hostedCamps.find(function(x){return x.id===id;}):{name:"",duration:"",from:todayISO(),to:todayISO(),cadetStrength:"",officerStrength:"",notes:"",photos:[]};
+  modal={id:id,title:id?"Edit hosted camp":"Add hosted camp",html:
+    fld("Camp name",inp("hc-name",c.name))+fld("Duration",inp("hc-dur",c.duration))+
+    '<div class="two">'+fld("Conducted from",inp("hc-from",c.from,"date"))+fld("Conducted to",inp("hc-to",c.to,"date"))+'</div>'+
+    '<div class="two">'+fld("Total cadet strength",inp("hc-cs",c.cadetStrength))+fld("Army officers strength",inp("hc-os",c.officerStrength))+'</div>'+
+    fld("Notes (optional)",ta("hc-notes",c.notes,60))+'<button class="gold-btn full" onclick="saveHosted()">✔ Save</button>'};
+  openModal();
+}
+function saveHosted(){
+  var existing=modal.id?DB.hostedCamps.find(function(x){return x.id===modal.id;}):null;
+  var o={id:modal.id||uid("hc"),name:val("hc-name"),duration:val("hc-dur"),from:val("hc-from"),to:val("hc-to"),
+    cadetStrength:val("hc-cs"),officerStrength:val("hc-os"),notes:val("hc-notes"),photos:existing?existing.photos||[]:[]};
+  if(modal.id)DB.hostedCamps=DB.hostedCamps.map(function(x){return x.id===o.id?o:x;});else DB.hostedCamps.unshift(o);
+  persist("hostedCamps");closeModal();render();
+}
+
+/* ---------- VISITORS ---------- */
+function viewVisitors(){
+  var list=DB.visitors.slice().sort(function(a,b){return (b.date||"").localeCompare(a.date||"");});
+  var h='<div class="row-head"><p class="muted">Dignitaries who visited the unit</p>'+
+    (officer?'<button class="gold-btn" onclick="editVisitor(null)">＋ Add visitor</button>':'')+'</div>';
+  if(!list.length){h+=emptyState("🎖️","No VIP visitors recorded",officer?"Add details of dignitaries who visited.":"No visits recorded yet.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(v){
+    h+='<div class="card"><div class="flex items-center justify-between gap3" style="margin-bottom:8px"><div class="flex1">'+
+      '<p style="font-weight:700;margin:0">'+esc(v.name)+'</p>'+
+      '<p class="x-small" style="color:'+C.goldSoft+'">'+esc(v.designation)+(v.organization?" · "+esc(v.organization):"")+'</p>'+
+      '<p class="x-small" style="margin-top:2px">'+fmtDate(v.date)+'</p></div>'+
+      (officer?'<div class="flex"><button class="iconbtn" onclick="editVisitor(\''+v.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'visitors\',\''+v.id+'\')">🗑️</button></div>':'')+'</div>'+
+      (v.notes?'<p style="font-size:14px;color:#c3cee4;margin:0 0 8px">'+esc(v.notes)+'</p>':'')+photoStrip(v.photos||[],"visitor-"+v.id)+'</div>';
+  });h+='</div>';return h;
+}
+function editVisitor(id){
+  var v=id?DB.visitors.find(function(x){return x.id===id;}):{name:"",designation:"",organization:"",date:todayISO(),notes:"",photos:[]};
+  modal={id:id,title:id?"Edit visitor":"Add VIP visitor",html:
+    fld("Name",inp("vi-name",v.name))+fld("Designation",inp("vi-desig",v.designation))+fld("Organization (optional)",inp("vi-org",v.organization))+
+    fld("Visit date",inp("vi-date",v.date,"date"))+fld("Notes (purpose of visit)",ta("vi-notes",v.notes,60))+
+    '<button class="gold-btn full" onclick="saveVisitor()">✔ Save</button>'};
+  openModal();
+}
+function saveVisitor(){
+  var existing=modal.id?DB.visitors.find(function(x){return x.id===modal.id;}):null;
+  var o={id:modal.id||uid("v"),name:val("vi-name"),designation:val("vi-desig"),organization:val("vi-org"),date:val("vi-date"),notes:val("vi-notes"),photos:existing?existing.photos||[]:[]};
+  if(modal.id)DB.visitors=DB.visitors.map(function(x){return x.id===o.id?o:x;});else DB.visitors.unshift(o);
+  persist("visitors");closeModal();render();
+}
+
+/* ---------- OFFICERS ---------- */
+function viewOfficers(){
+  var h='<div class="row-head"><p class="muted">Associate NCC Officer & unit officers</p>'+
+    (officer?'<button class="gold-btn" onclick="editOfficer(null)">＋ Add</button>':'')+'</div><div class="list">';
+  DB.officers.forEach(function(o){
+    h+='<div class="card"><div class="flex gap3" style="align-items:flex-start">'+
+      '<div class="ico-circle" style="width:56px;height:56px;border-radius:999px;background:rgba(232,181,58,.16);border-color:'+C.gold+';font-size:20px">'+(o.photo?'<img src="'+o.photo+'">':esc((o.name||"?").charAt(0)))+'</div>'+
+      '<div class="flex1"><p style="font-weight:800;margin:0">'+esc((o.rank?o.rank+" ":"")+o.name)+'</p>'+
+      '<p style="font-size:14px;color:'+C.goldSoft+';margin:0">'+esc(o.designation)+'</p>'+
+      (o.dept?'<p class="x-small" style="margin-top:2px">'+esc(o.dept)+'</p>':'')+
+      '<div class="flex items-center gap3 wrap-w small" style="margin-top:8px">'+(o.phone?'<span>📞 '+esc(o.phone)+'</span>':'')+(o.email?'<span>✉ '+esc(o.email)+'</span>':'')+'</div>'+
+      (o.message?'<p style="font-size:14px;color:#c3cee4;font-style:italic;margin:8px 0 0;border-left:2px solid '+C.gold+';padding-left:10px">“'+esc(o.message)+'”</p>':'')+'</div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="editOfficer(\''+o.id+'\')">✏️</button>'+(DB.officers.length>1?'<button class="iconbtn del" onclick="delItem(\'officers\',\''+o.id+'\')">🗑️</button>':'')+'</div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function editOfficer(id){
+  var o=id?DB.officers.find(function(x){return x.id===id;}):{photo:"",name:"",rank:"",designation:"Associate NCC Officer (ANO)",dept:"",phone:"",email:"",message:""};
+  modal={id:id,title:id?"Edit officer":"Add officer",html:
+    '<div style="display:flex;justify-content:center;margin-bottom:16px">'+avatar("of-photo",o.photo)+'</div>'+
+    '<div class="two">'+fld("Rank (optional)",inp("of-rank",o.rank))+fld("Name",inp("of-name",o.name))+'</div>'+
+    fld("Designation",inp("of-desig",o.designation))+fld("Department / College",inp("of-dept",o.dept))+
+    '<div class="two">'+fld("Phone",inp("of-phone",o.phone))+fld("Email",inp("of-email",o.email))+'</div>'+
+    fld("Message to cadets (optional)",ta("of-msg",o.message,60))+'<button class="gold-btn full" onclick="saveOfficer()">✔ Save</button>'};
+  openModal();
+}
+function saveOfficer(){
+  var existing=modal.id?DB.officers.find(function(x){return x.id===modal.id;}):null;
+  var o={id:modal.id||uid("o"),rank:val("of-rank"),name:val("of-name"),designation:val("of-desig"),dept:val("of-dept"),
+    phone:val("of-phone"),email:val("of-email"),message:val("of-msg"),photo:window.__avatar_ofphoto||(existing?existing.photo:"")||""};
+  if(modal.id)DB.officers=DB.officers.map(function(x){return x.id===o.id?o:x;});else DB.officers.push(o);
+  window.__avatar_ofphoto=null;persist("officers");closeModal();render();
+}
+
+/* ---------- NOTIFICATIONS ---------- */
+function viewNotices(){
+  var list=DB.notices.slice().sort(function(a,b){return (b.pinned-a.pinned)||b.date.localeCompare(a.date);});
+  var h='<div class="row-head"><p class="muted">Announcements for all cadets</p>'+
+    (officer?'<button class="gold-btn" onclick="editNotice(null)">＋ Post</button>':'')+'</div>';
+  if(!list.length){h+=emptyState("🔔","No notifications",officer?"Post the first announcement.":"Check back soon.");return h;}
+  h+='<div class="list">';
+  list.forEach(function(n){
+    h+='<div class="card" style="border-color:'+(n.pinned?"rgba(232,181,58,.45)":C.line)+'"><div class="flex items-center justify-between gap3"><div class="flex1">'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-bottom:4px">'+(n.pinned?'<span style="color:'+C.gold+'">📌</span>':'')+'<span style="font-weight:700">'+esc(n.title)+'</span></div>'+
+      '<p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;margin:0">'+esc(n.body)+'</p>'+
+      '<p class="x-small" style="margin-top:8px">'+fmtDate(n.date)+'</p></div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="togglePin(\''+n.id+'\')" style="color:'+(n.pinned?C.gold:C.sub)+'">📌</button><button class="iconbtn" onclick="editNotice(\''+n.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'notices\',\''+n.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';return h;
+}
+function togglePin(id){DB.notices=DB.notices.map(function(x){return x.id===id?Object.assign({},x,{pinned:!x.pinned}):x;});persist("notices");render();}
+function editNotice(id){
+  var n=id?DB.notices.find(function(x){return x.id===id;}):{title:"",body:"",date:todayISO(),pinned:false};
+  modal={id:id,title:id?"Edit notification":"Post notification",html:
+    fld("Title",inp("no-title",n.title))+fld("Message",ta("no-body",n.body,90))+fld("Date",inp("no-date",n.date,"date"))+
+    '<label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="no-pin" '+(n.pinned?"checked":"")+' style="width:auto"><span style="font-size:14px">Pin to top</span></label>'+
+    '<button class="gold-btn full" onclick="saveNotice()">✔ Save</button>'};
+  openModal();
+}
+function saveNotice(){
+  var o={id:modal.id||uid("n"),title:val("no-title"),body:val("no-body"),date:val("no-date"),pinned:document.getElementById("no-pin").checked};
+  if(modal.id)DB.notices=DB.notices.map(function(x){return x.id===o.id?o:x;});else DB.notices.push(o);
+  persist("notices");closeModal();render();
+}
+
+/* ---------- ENROLMENT ---------- */
+function viewEnrol(){
+  var info=DB.enrolInfo;var h='';
+  function infoCard(title,field,border){return '<div class="card"'+(border?' style="border-color:rgba(232,181,58,.4)"':'')+'><div class="flex items-center justify-between" style="margin-bottom:8px"><p style="font-size:14px;font-weight:700;margin:0">'+title+'</p>'+
+    (officer?'<button class="iconbtn" onclick="editEnrolInfo(\''+field+'\')">✏️</button>':'')+'</div>'+
+    '<p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;line-height:1.6;margin:0">'+esc(info[field])+'</p></div>';}
+  h+=infoCard("Eligibility Criteria — 1st Year Enrolment","eligibility");
+  h+=infoCard("Enrolment Procedure","procedure");
+  h+=infoCard("'B' &amp; 'C' Certificate Eligibility Criteria","bcEligibility",true);
+  h+='<div class="card"><div class="flex items-center justify-between gap3 wrap-w">'+
+    '<div><p style="font-size:24px;font-weight:800;margin:0;color:'+C.gold+'">'+DB.enrol.length+'</p><p class="x-small">first-year enrolment'+(DB.enrol.length!==1?"s":"")+' received</p></div>'+
+    '<button class="gold-btn" onclick="enrolForm()">📝 Fill enrolment form</button></div>'+
+    (officer&&DB.enrol.length?'<div class="flex gap2 wrap-w" style="margin-top:12px"><button class="ghost" onclick="exportEnrolXLSX()">⬇ Export Excel</button><button class="ghost" onclick="exportEnrolCSV()">⬇ Export CSV</button></div>':'')+'</div>';
+  if(officer){
+    if(!DB.enrol.length){h+=emptyState("📝","No enrolments yet","First-year students can fill the form above to apply.");}
+    else{h+='<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px">Enrolment list</p><div class="list">';
+      DB.enrol.forEach(function(r){
+        h+='<div class="card" style="padding:12px"><div class="flex items-center justify-between gap3"><div class="flex gap3 flex1" style="align-items:flex-start">'+
+          '<div class="ico-circle" style="width:42px;height:42px">'+(r.photo?'<img src="'+r.photo+'">':esc((r.name||"?").charAt(0).toUpperCase()))+'</div>'+
+          '<div class="flex1"><p style="font-weight:700;margin:0">'+esc(r.name)+'</p>'+
+          '<p class="x-small" style="margin-top:2px">'+esc(r.course)+' · Yr '+esc(r.year)+(r.section?"-"+esc(r.section):"")+' · '+esc(r.gender)+(r.blood?" · "+esc(r.blood):"")+'</p>'+
+          '<div class="flex items-center gap3 wrap-w x-small" style="margin-top:4px">'+(r.phone?'<span>📞 '+esc(r.phone)+'</span>':'')+(r.email?'<span>✉ '+esc(r.email)+'</span>':'')+(r.dob?'<span>DOB '+fmtDate(r.dob)+'</span>':'')+'</div>'+
+          (r.address?'<p class="x-small" style="margin-top:4px"><span style="color:'+C.goldSoft+'">Address: </span>'+esc(r.address)+'</p>':'')+
+          ((r.parentName||r.parentMobile)?'<p class="x-small" style="margin-top:4px"><span style="color:'+C.goldSoft+'">Parent: </span>'+esc(r.parentName)+(r.parentMobile?" · "+esc(r.parentMobile):"")+'</p>':'')+
+          (r.nokAddress?'<p class="x-small" style="margin-top:4px"><span style="color:'+C.goldSoft+'">NOK address: </span>'+esc(r.nokAddress)+'</p>':'')+
+          ((r.bankAccount||r.ifsc||r.branch)?'<p class="x-small" style="margin-top:4px"><span style="color:'+C.goldSoft+'">Bank: </span>A/C '+esc(r.bankAccount||"—")+' · IFSC '+esc(r.ifsc||"—")+' · '+esc(r.branch||"—")+'</p>':'')+
+          (r.reason?'<p class="x-small" style="margin-top:4px"><span style="color:'+C.goldSoft+'">Why NCC: </span>'+esc(r.reason)+'</p>':'')+
+          '<p class="x-small" style="margin-top:6px;color:#6b7da0">Applied '+fmtDate(r.date)+'</p></div></div>'+
+          '<button class="iconbtn del" onclick="delItem(\'enrol\',\''+r.id+'\')">🗑️</button></div></div>';
+      });h+='</div>';}
+  }else{
+    h+='<div class="card"><p style="font-size:14px;color:#c3cee4;margin:0">First-year students: tap <b style="color:'+C.gold+'">Fill enrolment form</b> above to apply to join the NCC unit. Your details go to the ANO.</p></div>';
+  }
+  return h;
+}
+function editEnrolInfo(field){
+  modal={field:field,title:"Edit content",html:fld("Content",ta("ei-val",DB.enrolInfo[field],180))+'<button class="gold-btn full" onclick="saveEnrolInfo()">✔ Save</button>'};
+  openModal();
+}
+function saveEnrolInfo(){DB.enrolInfo[modal.field]=val("ei-val");persist("enrolInfo");closeModal();render();}
+function enrolForm(){
+  modal={title:"1st Year NCC Enrolment Form",html:
+    '<div style="display:flex;justify-content:center;margin-bottom:16px">'+avatar("en-photo","")+'</div>'+
+    fld("Full name *",inp("en-name",""))+fld("Course / Branch *",inp("en-course",""))+
+    '<div class="two">'+fld("Year",sel("en-year",["I","II","III"],"I"))+fld("Section",inp("en-section",""))+'</div>'+
+    '<div class="two">'+fld("Date of birth",inp("en-dob","","date"))+fld("Gender",sel("en-gender",["Male","Female","Other"],"Male"))+'</div>'+
+    '<div class="two">'+fld("Blood group",inp("en-blood",""))+fld("Cadet phone",inp("en-phone",""))+'</div>'+
+    fld("Cadet email ID",inp("en-email",""))+fld("Full address",ta("en-addr","",54))+
+    '<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px">Parent / Next-of-Kin Details</p>'+
+    '<div class="two">'+fld("Parent's name",inp("en-pname",""))+fld("Parent's mobile",inp("en-pmob",""))+'</div>'+
+    fld("NOK (Next of Kin) address",ta("en-nok","",54))+
+    '<p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px">Bank Details</p>'+
+    fld("Bank account number",inp("en-acc",""))+
+    '<div class="two">'+fld("IFSC code",inp("en-ifsc",""))+fld("Branch name",inp("en-branch",""))+'</div>'+
+    fld("Why do you want to join NCC?",ta("en-reason","",54))+
+    '<p class="x-small" style="margin-bottom:12px">Your details are saved on this device for the ANO.</p>'+
+    '<button class="gold-btn full" onclick="submitEnrol()">✔ Submit enrolment</button>'};
+  openModal();
+}
+function submitEnrol(){
+  var name=val("en-name").trim(),course=val("en-course").trim();
+  if(!name||!course){alert("Please fill name and course.");return;}
+  DB.enrol.unshift({id:uid("r"),date:todayISO(),photo:window.__avatar_enphoto||"",name:name,course:course,
+    year:val("en-year"),section:val("en-section"),dob:val("en-dob"),gender:val("en-gender"),blood:val("en-blood"),
+    phone:val("en-phone"),email:val("en-email"),address:val("en-addr"),parentName:val("en-pname"),parentMobile:val("en-pmob"),
+    nokAddress:val("en-nok"),bankAccount:val("en-acc"),ifsc:val("en-ifsc").toUpperCase(),branch:val("en-branch"),reason:val("en-reason")});
+  window.__avatar_enphoto=null;persist("enrol");closeModal();render();
+}
+function enrolRows(){return DB.enrol.map(function(r){return{Name:r.name,Course:r.course,Year:r.year,Section:r.section,DOB:r.dob,Gender:r.gender,
+  "Blood Group":r.blood,"Cadet Phone":r.phone||"","Cadet Email":r.email||"","Address":r.address||"","Parent's Name":r.parentName||"",
+  "Parent's Mobile":r.parentMobile||"","NOK Address":r.nokAddress||"","Bank Account":r.bankAccount||"","IFSC":r.ifsc||"","Branch":r.branch||"",
+  "Reason For Joining":r.reason||"","Applied On":r.date};});}
+function exportEnrolXLSX(){downloadXLSX("SRPTC_NCC_Enrolment_Details.xlsx","Enrolments",enrolRows());}
+function exportEnrolCSV(){downloadCSV("SRPTC_NCC_Enrolment_Details.csv",enrolRows());}
+
+/* ---------- GALLERY ---------- */
+function viewGallery(){
+  var h='<div class="row-head"><p class="muted">'+DB.gallery.length+' photo'+(DB.gallery.length!==1?"s":"")+'</p>'+
+    (officer?'<label style="cursor:pointer"><input type="file" accept="image/*" multiple style="display:none" onchange="addGallery(this)"><span class="gold-btn">📷 Add photos</span></label>':'')+'</div>';
+  if(!DB.gallery.length){h+=emptyState("🖼️","No photos yet",officer?"Add photos from parades, camps and events.":"Photos will appear here soon.");return h;}
+  h+='<div class="gallery-grid">';
+  DB.gallery.forEach(function(g){
+    h+='<div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid '+C.line+';background:'+C.panel+'">'+
+      '<img src="'+g.src+'" onclick="viewPhoto(\''+g.id+'\')" style="width:100%;height:120px;object-fit:cover;display:block;cursor:pointer">'+
+      (g.caption?'<p class="x-small truncate" style="padding:6px 8px;margin:0;color:#c3cee4">'+esc(g.caption)+'</p>':'')+
+      (officer?'<button onclick="delItem(\'gallery\',\''+g.id+'\')" style="position:absolute;top:6px;right:6px;background:rgba(6,17,42,.85);color:#F3ABA1;border:none;border-radius:999px;width:24px;height:24px;cursor:pointer">🗑️</button>':'')+'</div>';
+  });h+='</div>';return h;
+}
+function addGallery(input){
+  var files=[].slice.call(input.files);if(!files.length)return;
+  Promise.all(files.map(function(f){return fileToDataURL(f,1000,.7).then(function(s){return{id:uid("g"),src:s,caption:"",date:todayISO()};});}))
+    .then(function(items){DB.gallery=items.concat(DB.gallery);persist("gallery");render();});
+}
+function viewPhoto(id){
+  var g=DB.gallery.find(function(x){return x.id===id;});
+  modal={id:id,title:g.caption||"Photo",html:
+    '<img src="'+g.src+'" style="width:100%;border-radius:10px;margin-bottom:12px">'+
+    (officer?fld("Caption",'<input value="'+esc(g.caption)+'" oninput="setCaption(\''+id+'\',this.value)" placeholder="Add a caption">'):'<p class="small">'+fmtDate(g.date)+'</p>')};
+  openModal();
+}
+function setCaption(id,cap){DB.gallery=DB.gallery.map(function(x){return x.id===id?Object.assign({},x,{caption:cap}):x;});persist("gallery");}
+
+/* ---------- BENEFITS ---------- */
+function viewBenefits(){
+  var b=DB.benefits;
+  var h='<div class="row-head"><h2 style="font-size:18px;font-weight:800;margin:0">NCC Benefits & Certificate Value</h2>'+
+    (officer?'<button class="gold-btn" onclick="editBenefits()">✏️ Edit</button>':'')+'</div>';
+  h+='<div class="card"><p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px">Why join NCC</p><div>';
+  b.general.forEach(function(x){h+='<div class="flex gap2" style="font-size:14px;color:#c3cee4;margin-bottom:6px"><span style="color:'+C.green+';flex-shrink:0">✔</span>'+esc(x)+'</div>';});
+  h+='</div></div>';
+  h+='<div class="card" style="border-color:rgba(59,149,207,.4)"><div class="flex items-center gap2" style="margin-bottom:8px"><div class="ico-circle" style="width:28px;height:28px;background:rgba(59,149,207,.18);border-color:transparent;color:#8fcdf0">B</div><span style="font-weight:700">\'B\' Certificate</span></div><p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;line-height:1.6;margin:0">'+esc(b.bCert)+'</p></div>';
+  h+='<div class="card" style="border-color:rgba(232,181,58,.45)"><div class="flex items-center gap2" style="margin-bottom:8px"><div class="ico-circle" style="width:28px;height:28px;background:rgba(232,181,58,.18);border-color:transparent;color:'+C.gold+'">C</div><span style="font-weight:700">\'C\' Certificate</span></div><p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;line-height:1.6;margin:0">'+esc(b.cCert)+'</p></div>';
+  h+='<div class="card" style="background:rgba(210,74,58,.10);border-color:rgba(210,74,58,.4)"><p class="x-small" style="color:#f3c0b8;line-height:1.5;margin:0"><b>Note:</b> '+esc(b.note)+'</p></div>';
+  return h;
+}
+function editBenefits(){
+  var b=DB.benefits;
+  modal={title:"Edit benefits content",html:
+    fld("Why join NCC (one benefit per line)",ta("bn-gen",b.general.join("\n"),110))+
+    fld("'B' Certificate",ta("bn-b",b.bCert,90))+fld("'C' Certificate",ta("bn-c",b.cCert,120))+fld("Note",ta("bn-note",b.note,60))+
+    '<button class="gold-btn full" onclick="saveBenefits()">✔ Save</button>'};
+  openModal();
+}
+function saveBenefits(){
+  DB.benefits.general=val("bn-gen").split("\n").filter(function(x){return x.trim();});
+  DB.benefits.bCert=val("bn-b");DB.benefits.cCert=val("bn-c");DB.benefits.note=val("bn-note");
+  persist("benefits");closeModal();render();
+}
+
+/* ---------- REPORTS ---------- */
+function viewReports(){
+  var byYear={I:0,II:0,III:0};DB.cadets.forEach(function(c){byYear[c.year]=(byYear[c.year]||0)+1;});
+  var p=0,t=0;for(var d in DB.attendance){var day=DB.attendance[d];for(var k in day){t++;if(day[k]==="P")p++;}}
+  var stats={total:DB.cadets.length,byYear:byYear,b:DB.certs.filter(function(c){return c.type==="B";}).length,
+    c:DB.certs.filter(function(c){return c.type==="C";}).length,camps:DB.camps.length,
+    campCadets:DB.camps.reduce(function(s,c){return s+(parseInt(c.count)||0);},0),
+    parades:DB.events.filter(function(e){return e.cat==="Parade";}).length,
+    events:DB.events.filter(function(e){return ["Event","Function","Competition"].indexOf(e.cat)>=0;}).length,
+    att:t?Math.round(p/t*100):null,paradeDays:Object.keys(DB.attendance).length};
+  function stat(n,l,col){return '<div class="stat"><p class="n" style="color:'+(col||C.gold)+'">'+n+'</p><p class="l">'+l+'</p></div>';}
+  var h='<div class="row-head"><h2 style="font-size:18px;font-weight:800;margin:0">NCC Report</h2><button class="ghost no-print" onclick="window.print()">🖨 Print</button></div>';
+  h+='<div class="card"><p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px">Overall Summary (live)</p>'+
+    '<div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px">'+
+    stat(stats.total,"Total cadets")+stat(stats.b,"'B' holders","#8fcdf0")+stat(stats.c,"'C' holders",C.gold)+
+    stat(stats.camps,"Camps",C.sky)+stat(stats.campCadets,"Camp participations",C.purple)+stat(stats.att==null?"—":stats.att+"%","Avg attendance",C.green)+'</div>'+
+    '<div class="grid" style="grid-template-columns:repeat(3,1fr)">'+stat(stats.byYear.I||0,"Year I")+stat(stats.byYear.II||0,"Year II")+stat(stats.byYear.III||0,"Year III")+'</div>'+
+    '<p class="x-small" style="margin-top:12px">'+stats.parades+' parade entries · '+stats.events+' events · '+stats.paradeDays+' attendance days recorded.</p></div>';
+  h+='<div class="row-head"><p class="x-small" style="font-weight:700;color:'+C.goldSoft+';text-transform:uppercase;letter-spacing:.04em;margin:0">Year-wise reports</p>'+
+    (officer?'<button class="gold-btn" onclick="editReport(null)">＋ Add</button>':'')+'</div>';
+  if(officer) h+=importCard("Import report from a Word document","extracts text from a .docx so you can review before saving",".docx","importReport(this)","reports");
+  var list=DB.reports.slice().sort(function(a,b){return (b.year||"").localeCompare(a.year||"");});
+  if(!list.length){h+=emptyState("📄","No year-wise reports",officer?"Add a report or import one from a Word document.":"Reports will appear here.");}
+  else{h+='<div class="list">';list.forEach(function(r){
+    h+='<div class="card"><div class="flex items-center justify-between gap3"><div class="flex1">'+
+      '<div class="flex items-center gap2 wrap-w" style="margin-bottom:4px">'+pill(r.year,C.gold)+'<span style="font-weight:700">'+esc(r.title)+'</span></div>'+
+      '<p style="font-size:14px;color:#c3cee4;white-space:pre-wrap;line-height:1.6;margin:0">'+esc(r.body)+'</p></div>'+
+      (officer?'<div class="flex" style="flex-direction:column"><button class="iconbtn" onclick="editReport(\''+r.id+'\')">✏️</button><button class="iconbtn del" onclick="delItem(\'reports\',\''+r.id+'\')">🗑️</button></div>':'')+
+      '</div></div>';
+  });h+='</div>';}
+  return h;
+}
+function importReport(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  if(!/\.docx$/i.test(f.name)){setImportMsg("reports","Only .docx Word files are supported (not the older .doc).");return;}
+  if(typeof mammoth==="undefined"){setImportMsg("reports","Word import library didn't load (check your internet).");return;}
+  setImportMsg("reports","Reading…");
+  readArrayBuffer(f).then(function(buf){return mammoth.extractRawText({arrayBuffer:buf});}).then(function(res){
+    importMsgs.reports="";
+    var text=(res.value||"").trim();
+    editReport(null,{year:String(new Date().getFullYear()),title:f.name.replace(/\.docx$/i,""),body:text||"(No text could be extracted — please paste content manually.)"});
+  }).catch(function(){setImportMsg("reports","Could not read that Word document.");});
+}
+function editReport(id,prefill){
+  var r=id?DB.reports.find(function(x){return x.id===id;}):(prefill||{year:String(new Date().getFullYear()),title:"",body:""});
+  modal={id:id,title:id?"Edit report":"Add year report",html:
+    '<div class="three"><div>'+fld("Year",inp("rp-year",r.year))+'</div><div style="grid-column:span 2">'+fld("Title",inp("rp-title",r.title))+'</div></div>'+
+    fld("Report",ta("rp-body",r.body,140))+'<button class="gold-btn full" onclick="saveReport()">✔ Save</button>'};
+  openModal();
+}
+function saveReport(){
+  var o={id:modal.id||uid("y"),year:val("rp-year"),title:val("rp-title"),body:val("rp-body")};
+  if(modal.id)DB.reports=DB.reports.map(function(x){return x.id===o.id?o:x;});else DB.reports.push(o);
+  persist("reports");closeModal();render();
+}
+
+/* ---------- QUIZ ---------- */
+var quizState={level:"All",session:null,best:store.get("ncc:quizbest",null)};
+function viewQuiz(){
+  var s=quizState.session;
+  if(s&&s.i>=s.qs.length){
+    var score=s.answers.reduce(function(a,x,i){return a+(x===s.qs[i].a?1:0);},0);
+    var pct=Math.round(score/s.qs.length*100);
+    if(quizState.best==null||pct>quizState.best){quizState.best=pct;store.set("ncc:quizbest",pct);}
+    var h='<div class="card" style="text-align:center;padding:24px"><div style="font-size:40px">🏅</div>'+
+      '<p class="small">Your score</p><p style="font-size:36px;font-weight:800;margin:4px 0;color:'+(pct>=60?"#7fe0a8":C.goldSoft)+'">'+score+'/'+s.qs.length+'</p>'+
+      '<p class="small" style="margin-bottom:12px">'+pct+'% · '+(pct>=80?"Outstanding, cadet!":pct>=60?"Well done — keep drilling.":"Revise and try again.")+'</p>'+
+      '<button class="gold-btn" onclick="quizStart()">↻ Try again</button></div>';
+    h+='<p style="font-weight:700;margin:0 0 8px">Review</p><div class="list">';
+    s.qs.forEach(function(q,i){var ok=s.answers[i]===q.a;
+      h+='<div class="card" style="border-color:'+(ok?"rgba(47,179,106,.4)":"rgba(210,74,58,.4)")+'">'+
+        '<p style="font-weight:600;margin:0 0 8px">'+(i+1)+'. '+esc(q.q)+'</p>'+
+        '<p style="font-size:14px;margin:0;color:'+(ok?"#7fe0a8":"#F3ABA1")+'">'+(ok?"✓ ":"✗ Your answer: "+esc(q.o[s.answers[i]])+" — ")+'Correct: <b>'+esc(q.o[q.a])+'</b></p></div>';
+    });h+='</div>';return h;
+  }
+  if(s){
+    var q=s.qs[s.i];var picked=s.picked;var answered=picked!==undefined;
+    var h2='<div class="flex items-center justify-between" style="margin-bottom:12px">'+pill(q.cat+" · Cert "+q.lvl,C.gold)+'<span class="small" style="font-weight:700">'+(s.i+1)+' / '+s.qs.length+'</span></div>';
+    h2+='<div class="progress"><div style="width:'+(s.i/s.qs.length*100)+'%"></div></div>';
+    h2+='<h3 style="font-size:18px;font-weight:700;margin:0 0 16px">'+esc(q.q)+'</h3>';
+    q.o.forEach(function(opt,idx){var bg=C.panel,fg=C.cream,bd=C.line;
+      if(answered){if(idx===q.a){bg="rgba(47,179,106,.16)";fg="#7fe0a8";bd="#7fe0a8";}else if(idx===picked){bg="rgba(210,74,58,.16)";fg="#F3ABA1";bd="#F3ABA1";}}
+      h2+='<button class="qopt" style="background:'+bg+';color:'+fg+';border-color:'+bd+';cursor:'+(answered?"default":"pointer")+'" onclick="'+(answered?"":"quizAnswer("+idx+")")+'"><span>'+esc(opt)+'</span>'+(answered&&idx===q.a?'<span>✓</span>':answered&&idx===picked?'<span>✕</span>':'')+'</button>';
+    });
+    if(answered)h2+='<div style="margin-top:20px"><button class="gold-btn full" onclick="quizNext()">'+(s.i+1===s.qs.length?"See results":"Next question")+' ›</button></div>';
+    return h2;
+  }
+  var pool=quizState.level==="All"?QUIZ:QUIZ.filter(function(q){return q.lvl===quizState.level;});
+  var h3='<p class="muted" style="margin-bottom:14px">Practice for the NCC A / B / C certificate exams — general knowledge, drill, map reading and more.</p>';
+  h3+='<div class="card"><p class="x-small" style="font-weight:600;color:'+C.goldSoft+';letter-spacing:.04em;margin:0 0 8px">CHOOSE A LEVEL</p><div class="seg" style="margin:0">';
+  ["All","A","B","C"].forEach(function(lv){var count=lv==="All"?QUIZ.length:QUIZ.filter(function(q){return q.lvl===lv;}).length;
+    h3+='<button class="'+(quizState.level===lv?"on":"")+'" onclick="quizLevel(\''+lv+'\')">'+(lv==="All"?"All levels":"Cert "+lv)+' <span style="opacity:.7">('+count+')</span></button>';});
+  h3+='</div></div>';
+  h3+='<div class="card" style="text-align:center;padding:24px"><div style="font-size:36px">📘</div>'+
+    '<p style="font-weight:700;margin:8px 0 4px">'+Math.min(10,pool.length)+'-question round</p>'+
+    '<p class="small" style="margin-bottom:16px">Questions are shuffled each time.'+(quizState.best!=null?" Best so far: <b style=\"color:"+C.gold+"\">"+quizState.best+"%</b>":"")+'</p>'+
+    '<button class="gold-btn" onclick="quizStart()">Start quiz ›</button></div>';
+  return h3;
+}
+function quizLevel(lv){quizState.level=lv;render();}
+function quizStart(){var pool=quizState.level==="All"?QUIZ:QUIZ.filter(function(q){return q.lvl===quizState.level;});
+  quizState.session={qs:pool.slice().sort(function(){return Math.random()-.5;}).slice(0,Math.min(10,pool.length)),i:0,answers:[],picked:undefined};render();}
+function quizAnswer(idx){quizState.session.answers.push(idx);quizState.session.picked=idx;render();}
+function quizNext(){quizState.session.i++;quizState.session.picked=undefined;render();}
+
+/* ============================ HELPERS ============================ */
+function fld(label,inner){return '<label class="fld"><span>'+label+'</span>'+inner+'</label>';}
+function inp(id,value,type){return '<input id="'+id+'" type="'+(type||"text")+'" value="'+esc(value)+'">';}
+function ta(id,value,minh){return '<textarea id="'+id+'" style="min-height:'+(minh||60)+'px">'+esc(value)+'</textarea>';}
+function sel(id,opts,value){return '<select id="'+id+'">'+opts.map(function(o){return '<option'+(o===value?" selected":"")+'>'+esc(o)+'</option>';}).join("")+'</select>';}
+function val(id){var el=document.getElementById(id);return el?el.value:"";}
+function avatar(id,src){
+  return '<label class="avatar"><input type="file" accept="image/*" onchange="pickAvatar(\''+id+'\',this)">'+
+    '<span id="'+id+'-prev" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;color:'+C.gold+'">'+(src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover">':'📷')+'</span>'+
+    '<span style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:'+C.gold+';border:2px solid '+C.navy+';border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px">✏️</span></label>';
+}
+function pickAvatar(id,input){var f=input.files[0];if(!f)return;
+  fileToDataURL(f,500,.78).then(function(url){
+    window["__avatar_"+id.replace("-","")]=url;
+    var prev=document.getElementById(id+"-prev");if(prev)prev.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover">';
+  });}
+function delItem(coll,id){
+  if(!confirm("Delete this item?"))return;
+  DB[coll]=DB[coll].filter(function(x){return x.id!==id;});persist(coll);render();
+}
+
+/* ---------- MODAL ---------- */
+function openModal(){render();}
+function closeModal(){modal=null;render();}
+function mountModal(){
+  var bg=document.createElement("div");bg.className="modal-bg";bg.onclick=function(e){if(e.target===bg)closeModal();};
+  bg.innerHTML='<div class="modal" onclick="event.stopPropagation()">'+
+    '<div class="tricolour" style="height:3px"><div style="background:'+C.red+'"></div><div style="background:'+C.navy+'"></div><div style="background:'+C.sky+'"></div></div>'+
+    '<div class="modal-h"><h3>'+esc(modal.title)+'</h3><button onclick="closeModal()">×</button></div>'+
+    '<div class="modal-b">'+modal.html+'</div></div>';
+  document.body.appendChild(bg);
+  window.__currentModalBg=bg;
+}
+
+render();
+</script>
+</body>
+</html>
